@@ -190,48 +190,121 @@ export function DevisPage() {
     }
   }
 
-  const handleCreateDevis = async (devisData: any) => {
-    try {
-      if (!isSupabaseConfigured()) {
-        const newDevis: OXADevis = {
-          id: Date.now().toString(),
-          ...devisData,
-          commercial_id: profile?.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        setDevis([newDevis, ...devis])
-        setShowOXAGenerator(false)
-        setShowStandardGenerator(false)
-        return
-      }
+  // Ajoutez cette fonction corrigée dans votre DevisPage.tsx
 
-      // Transform data for Supabase - map client object to client_id and handle lignes properly
-      const supabaseData = {
+const handleCreateDevis = async (devisData: any) => {
+  try {
+    console.log('Données reçues du générateur:', devisData); // Debug
+
+    if (!isSupabaseConfigured()) {
+      const newDevis: OXADevis = {
+        id: Date.now().toString(),
+        numero: `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+        date_creation: new Date().toISOString().split('T')[0],
         ...devisData,
-        client_id: devisData.client?.id || devisData.client_id,
-        commercial_id: profile?.id
+        commercial_id: profile?.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-      
-      // Remove client object and lignes_data if they exist (not database columns)
-      delete supabaseData.client
-      // Remove lignes field as it doesn't exist in database - only lignes_data exists
-      delete supabaseData.lignes
-
-      const { data, error } = await supabase
-        .from('devis')
-        .insert([supabaseData])
-        .select()
-        .single()
-
-      if (error) throw error
-      setDevis([data, ...devis])
+      setDevis([newDevis, ...devis])
       setShowOXAGenerator(false)
       setShowStandardGenerator(false)
-    } catch (error) {
-      console.error('Error creating devis:', error)
+      return
+    }
+
+    // Générer un numéro de devis unique
+    const year = new Date().getFullYear()
+    const timestamp = Date.now().toString().slice(-6)
+    const numero = `DEV-${year}-${timestamp}`
+
+    // Préparer les données pour Supabase
+    const supabaseData = {
+      // Champs obligatoires de base
+      numero,
+      date_devis: devisData.date_devis || new Date().toISOString().split('T')[0],
+      date_creation: new Date().toISOString().split('T')[0],
+      objet: devisData.objet,
+      client_id: devisData.client_id,
+      commercial_id: profile?.id,
+      
+      // Type et statut
+      type: devisData.type || 'CEE',
+      statut: devisData.statut || 'brouillon',
+      
+      // Montants financiers
+      total_ht: devisData.total_ht || 0,
+      total_tva: devisData.total_tva || 0,
+      total_ttc: devisData.total_ttc || 0,
+      tva_taux: devisData.tva_taux || 20.00,
+      marge_totale: devisData.marge_totale || 0,
+      
+      // Conditions commerciales
+      modalites_paiement: devisData.modalites_paiement || null,
+      garantie: devisData.garantie || null,
+      penalites: devisData.penalites || null,
+      clause_juridique: devisData.clause_juridique || null,
+      
+      // Champs spécifiques CEE (optionnels)
+      ...(devisData.cee_kwh_cumac && {
+        cee_kwh_cumac: devisData.cee_kwh_cumac,
+        cee_prix_unitaire: devisData.cee_prix_unitaire || 0.002,
+        cee_montant_total: devisData.cee_montant_total || devisData.prime_cee || 0,
+        reste_a_payer_ht: devisData.reste_a_payer_ht || devisData.net_a_payer || 0
+      }),
+      
+      // Données des lignes
+      lignes_data: devisData.lignes_data || [],
+      
+      // Champs texte optionnels
+      description_operation: devisData.description_operation || null,
+      remarques: devisData.remarques || null
+    }
+
+    // Nettoyer les champs qui ne sont pas dans la base de données
+    delete supabaseData.client
+    delete supabaseData.lignes
+    delete supabaseData.zones
+    delete supabaseData.cee_params
+    delete supabaseData.cee_result
+    delete supabaseData.cee_mode
+    delete supabaseData.cee_integration
+    delete supabaseData.cee_calculation
+    delete supabaseData.prime_cee_deduite
+    delete supabaseData.net_a_payer
+
+    console.log('Données à envoyer à Supabase:', supabaseData); // Debug
+
+    const { data, error } = await supabase
+      .from('devis')
+      .insert([supabaseData])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erreur Supabase détaillée:', error)
+      throw error
+    }
+
+    console.log('Devis créé avec succès:', data); // Debug
+    
+    setDevis([data, ...devis])
+    setShowOXAGenerator(false)
+    setShowStandardGenerator(false)
+    
+    // Message de succès
+    alert('Devis créé avec succès !')
+    
+  } catch (error: any) {
+    console.error('Error creating devis:', error)
+    
+    // Message d'erreur détaillé
+    if (error?.message) {
+      alert(`Erreur lors de la création du devis: ${error.message}`)
+    } else {
+      alert('Erreur inconnue lors de la création du devis')
     }
   }
+}
 
   const handleUpdateDevis = async (id: string, devisData: any) => {
     try {
