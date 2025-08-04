@@ -15,11 +15,95 @@ import {
   Check,
   X,
   Clock,
-  Zap
+  Zap,
+  ChevronDown
 } from 'lucide-react'
 import OXADevisGenerator from './OXADevisGenerator'
-import { StandardDevisGenerator } from './StandardDevisGenerator'
 import { DevisDetails } from './DevisDetails'
+
+// Composant pour le dropdown de statut
+interface StatusDropdownProps {
+  currentStatus: string;
+  devisId: string;
+  onStatusChange: (devisId: string, newStatus: string) => void;
+  disabled?: boolean;
+}
+
+function StatusDropdown({ currentStatus, devisId, onStatusChange, disabled }: StatusDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const statusOptions = [
+    { value: 'brouillon', label: 'Brouillon', color: 'bg-gray-100 text-gray-800', icon: Clock },
+    { value: 'envoye', label: 'Envoyé', color: 'bg-blue-100 text-blue-800', icon: Send },
+    { value: 'accepte', label: 'Accepté', color: 'bg-green-100 text-green-800', icon: Check },
+    { value: 'refuse', label: 'Refusé', color: 'bg-red-100 text-red-800', icon: X },
+    { value: 'expire', label: 'Expiré', color: 'bg-orange-100 text-orange-800', icon: Calendar }
+  ]
+
+  const currentStatusData = statusOptions.find(s => s.value === currentStatus)
+  const StatusIcon = currentStatusData?.icon || Clock
+
+  const handleStatusSelect = (newStatus: string) => {
+    if (newStatus !== currentStatus) {
+      onStatusChange(devisId, newStatus)
+    }
+    setIsOpen(false)
+  }
+
+  if (disabled) {
+    return (
+      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${currentStatusData?.color}`}>
+        <StatusIcon className="h-3 w-3 mr-1" />
+        {currentStatusData?.label}
+      </span>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full hover:opacity-80 transition-opacity ${currentStatusData?.color}`}
+        title="Cliquer pour changer le statut"
+      >
+        <StatusIcon className="h-3 w-3 mr-1" />
+        {currentStatusData?.label}
+        <ChevronDown className="h-3 w-3 ml-1" />
+      </button>
+
+      {isOpen && (
+        <>
+          {/* Overlay pour fermer en cliquant à l'extérieur */}
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+
+          {/* Dropdown menu */}
+          <div className="absolute z-20 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg">
+            {statusOptions.map((status) => {
+              const Icon = status.icon
+              const isSelected = status.value === currentStatus
+
+              return (
+                <button
+                  key={status.value}
+                  onClick={() => handleStatusSelect(status.value)}
+                  className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg flex items-center ${isSelected ? 'bg-blue-50 font-medium' : ''
+                    }`}
+                >
+                  <Icon className="h-3 w-3 mr-2" />
+                  {status.label}
+                  {isSelected && <Check className="h-3 w-3 ml-auto text-blue-600" />}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export function DevisPage() {
   const { profile } = useAuth()
@@ -31,7 +115,6 @@ export function DevisPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [showOXAGenerator, setShowOXAGenerator] = useState(false)
-  const [showStandardGenerator, setShowStandardGenerator] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [selectedDevis, setSelectedDevis] = useState<OXADevis | null>(null)
   const [editingDevis, setEditingDevis] = useState<OXADevis | null>(null)
@@ -208,7 +291,6 @@ export function DevisPage() {
         }
         setDevis([newDevis, ...devis])
         setShowOXAGenerator(false)
-        setShowStandardGenerator(false)
         return
       }
 
@@ -289,7 +371,6 @@ export function DevisPage() {
 
       setDevis([data, ...devis])
       setShowOXAGenerator(false)
-      setShowStandardGenerator(false)
 
       // Message de succès
       alert('Devis créé avec succès !')
@@ -316,7 +397,6 @@ export function DevisPage() {
         ))
         setEditingDevis(null)
         setShowOXAGenerator(false)
-        setShowStandardGenerator(false)
         return
       }
 
@@ -397,7 +477,6 @@ export function DevisPage() {
       setDevis(devis.map(d => d.id === id ? data : d))
       setEditingDevis(null)
       setShowOXAGenerator(false)
-      setShowStandardGenerator(false)
 
       // Message de succès
       alert('Devis mis à jour avec succès !')
@@ -431,6 +510,40 @@ export function DevisPage() {
       setDevis(devis.filter(d => d.id !== id))
     } catch (error) {
       console.error('Error deleting devis:', error)
+    }
+  }
+
+  const handleStatusChange = async (devisId: string, newStatus: string) => {
+    try {
+      if (!isSupabaseConfigured()) {
+        // Mode démo
+        setDevis(devis.map(d =>
+          d.id === devisId ? { ...d, statut: newStatus, updated_at: new Date().toISOString() } : d
+        ))
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('devis')
+        .update({
+          statut: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', devisId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setDevis(devis.map(d => d.id === devisId ? data : d))
+
+      // Message de succès
+      const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus
+      alert(`Statut changé vers "${statusLabel}" avec succès !`)
+
+    } catch (error: any) {
+      console.error('Erreur changement de statut:', error)
+      alert(`Erreur lors du changement de statut: ${error.message}`)
     }
   }
 
@@ -527,24 +640,7 @@ export function DevisPage() {
     )
   }
 
-  if (showStandardGenerator) {
-    return (
-      <StandardDevisGenerator
-        clients={clients}
-        articles={articles}
-        onClientCreated={handleClientCreated}
-        onSave={editingDevis
-          ? (data) => handleUpdateDevis(editingDevis.id, data)
-          : handleCreateDevis
-        }
-        onCancel={() => {
-          setShowStandardGenerator(false)
-          setEditingDevis(null)
-        }}
-        existingDevis={editingDevis}
-      />
-    )
-  }
+
 
   if (showDetails && selectedDevis) {
     const client = clients.find(c => c.id === selectedDevis.client_id)
@@ -613,16 +709,7 @@ export function DevisPage() {
             </p>
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={() => {
-                setEditingDevis(null)
-                setShowStandardGenerator(true)
-              }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Devis Standard
-            </button>
+
             <button
               onClick={() => {
                 setEditingDevis(null)
@@ -787,13 +874,33 @@ export function DevisPage() {
                         {formatDate(devis.date_devis)}
                       </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Statut:</span>
+                    <div className="grid grid-cols-2 gap-3 text-xs mb-3">
                       <div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(getStatusColor(devis.statut))}`}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {statusOptions.find(s => s.value === devis.statut)?.label}
-                        </span>
+                        <span className="text-gray-500">Montant TTC:</span>
+                        <div className="font-semibold text-gray-900">{formatCurrency(devis.total_ttc)}</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Prime CEE:</span>
+                        <div className="font-semibold text-gray-900">
+                          {devis.cee_montant_total ? formatCurrency(devis.cee_montant_total) : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Date:</span>
+                        <div className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+                          {formatDate(devis.date_devis)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Statut:</span>
+                        <div>
+                          <StatusDropdown
+                            currentStatus={devis.statut}
+                            devisId={devis.id}
+                            onStatusChange={handleStatusChange}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -849,13 +956,9 @@ export function DevisPage() {
                         setEditingDevis(enrichedDevis)
 
                         // Décider quelle interface ouvrir
-                        const isCEEDevis = (devis.type === 'CEE' || devis.type === 'cee') && (devis.cee_montant_total && devis.cee_montant_total > 0)
 
-                        if (isCEEDevis) {
-                          setShowOXAGenerator(true)
-                        } else {
-                          setShowStandardGenerator(true)
-                        }
+
+                        setShowOXAGenerator(true)
                       }}
                       className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                       title="Modifier"
@@ -937,14 +1040,11 @@ export function DevisPage() {
                       </span>
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-center">
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(getStatusColor(devis.statut))}`}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {devis.statut === 'brouillon' ? 'Brouillon' :
-                          devis.statut === 'envoye' ? 'Envoyé' :
-                            devis.statut === 'accepte' ? 'Accepté' :
-                              devis.statut === 'refuse' ? 'Refusé' :
-                                'Expiré'}
-                      </span>
+                      <StatusDropdown
+                        currentStatus={devis.statut}
+                        devisId={devis.id}
+                        onStatusChange={handleStatusChange}
+                      />
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {formatCurrency(devis.total_ttc)}
@@ -989,13 +1089,8 @@ export function DevisPage() {
                             setEditingDevis(enrichedDevis)
 
                             // Décider quelle interface ouvrir
-                            const isCEEDevis = (devis.type === 'CEE' || devis.type === 'cee') || (devis.cee_montant_total && devis.cee_montant_total > 0)
 
-                            if (isCEEDevis) {
-                              setShowOXAGenerator(true)
-                            } else {
-                              setShowStandardGenerator(true)
-                            }
+                            setShowOXAGenerator(true)
                           }}
                           className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                           title="Modifier"
@@ -1029,13 +1124,7 @@ export function DevisPage() {
               }
             </p>
             <div className="mt-6 flex justify-center space-x-3">
-              <button
-                onClick={() => setShowStandardGenerator(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Devis Standard
-              </button>
+
               <button
                 onClick={() => setShowOXAGenerator(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"

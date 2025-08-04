@@ -353,19 +353,19 @@ interface DevisData {
 
 // ====== CONSTANTES ======
 const PROFILS_FONCTIONNEMENT = [
-  { value: '1x8h', label: '1×8h (8h/jour)', coefficient: 1 },
-  { value: '2x8h', label: '2×8h (16h/jour)', coefficient: 2 },
-  { value: '3x8h_weekend_off', label: '3×8h week-end off', coefficient: 2.5 },
-  { value: '3x8h_24_7', label: '3×8h 24/7', coefficient: 3 },
-  { value: 'continu_24_7', label: 'Continu 24/7', coefficient: 3.5 }
+  { value: '1x8h_weekend_off', label: '1×8h avec arrêt week-end', coefficient: 1 },      // ← Nouveau
+  { value: '2x8h_weekend_off', label: '2×8h avec arrêt week-end', coefficient: 2.2 },    // ← Corrigé
+  { value: '3x8h_weekend_on', label: '3×8h avec arrêt week-end', coefficient: 3 },       // ← Corrigé
+  { value: '3x8h_no_stop', label: '3×8h sans arrêt week-end', coefficient: 4.2 }         // ← Nouveau
 ];
 
 const DUREES_CONTRAT = [
   { value: 1, label: '1 an', facteur: 1 },
-  { value: 2, label: '2 ans', facteur: 1.8 },
-  { value: 3, label: '3 ans', facteur: 2.5 },
-  { value: 4, label: '4 ans', facteur: 3.1 },
-  { value: 5, label: '5 ans', facteur: 3.6 }
+  { value: 2, label: '2 ans', facteur: 1.96 },      // ← Corrigé
+  { value: 3, label: '3 ans', facteur: 2.89 },      // ← Corrigé
+  { value: 4, label: '4 ans', facteur: 3.78 },      // ← Corrigé
+  { value: 5, label: '5 ans', facteur: 4.63 },      // ← Corrigé
+  { value: 6, label: '6 ans', facteur: 5.45 }       // ← Ajouté
 ];
 
 const DEFAULT_DEVIS_DATA: DevisData = {
@@ -375,11 +375,11 @@ const DEFAULT_DEVIS_DATA: DevisData = {
   description_operation: '',
   cee_params: {
     puissance_nominale: 0,
-    profil_fonctionnement: '1x8h',
-    duree_contrat: 1,
-    coefficient_activite: 1,
-    facteur_f: 1,
-    tarif_kwh: 0.002
+    profil_fonctionnement: '3x8h_no_stop',  // ← Le plus performant
+    duree_contrat: 5,                       // ← 5 ans
+    coefficient_activite: 4.2,              // ← Sera recalculé automatiquement
+    facteur_f: 4.63,                       // ← Sera recalculé automatiquement  
+    tarif_kwh: 0.007                       // ← 0,007 €
   },
   cee_result: {
     kwh_cumac: 0,
