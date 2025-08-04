@@ -36,9 +36,8 @@ function ClientSelector({ clients, selectedClient, onClientSelect, error }: Clie
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between ${
-          error ? 'border-red-500' : 'border-gray-300'
-        }`}
+        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between ${error ? 'border-red-500' : 'border-gray-300'
+          }`}
       >
         {selectedClient ? (
           <div className="flex items-center">
@@ -112,10 +111,10 @@ function ArticleSelector({ articles, onArticleSelect, currentDesignation, disabl
   // Suggestions intelligentes basées sur la désignation actuelle
   const suggestedArticles = useMemo(() => {
     if (!currentDesignation || currentDesignation.length < 3) return [];
-    
+
     const keywords = currentDesignation.toLowerCase().split(' ').filter(word => word.length > 2);
     if (keywords.length === 0) return [];
-    
+
     return articles.filter(article => {
       const articleText = `${article.nom} ${article.description || ''}`.toLowerCase();
       return keywords.some(keyword => articleText.includes(keyword));
@@ -330,22 +329,22 @@ interface DevisData {
   date_devis: string;
   objet: string;
   description_operation: string;
-  
+
   // CEE
   cee_params: CEEParams;
   cee_result: CEEResult;
   cee_mode: 'deduction' | 'information';
-  
+
   // Zones et lignes
   zones: DevisZone[];
-  
+
   // Totaux
   total_ht: number;
   total_tva: number;
   total_ttc: number;
   prime_cee_deduite: number;
   net_a_payer: number;
-  
+
   // Conditions
   modalites_paiement: string;
   garantie: string;
@@ -407,12 +406,12 @@ interface Props {
   existingDevis?: any;
 }
 
-export default function OptimizedCEEGenerator({ 
-  clients, 
-  articles, 
-  onSave, 
-  onCancel, 
-  existingDevis 
+export default function OptimizedCEEGenerator({
+  clients,
+  articles,
+  onSave,
+  onCancel,
+  existingDevis
 }: Props) {
   // ====== ÉTATS ======
   const [devisData, setDevisData] = useState<DevisData>(DEFAULT_DEVIS_DATA);
@@ -434,7 +433,7 @@ export default function OptimizedCEEGenerator({
   const calculateCEE = useCallback((params: CEEParams): CEEResult => {
     const profil = PROFILS_FONCTIONNEMENT.find(p => p.value === params.profil_fonctionnement);
     const duree = DUREES_CONTRAT.find(d => d.value === params.duree_contrat);
-    
+
     if (!profil || !duree) {
       return { kwh_cumac: 0, prime_estimee: 0 };
     }
@@ -448,13 +447,13 @@ export default function OptimizedCEEGenerator({
 
   // ====== CALCULS TOTAUX ======
   const calculateTotals = useCallback((zones: DevisZone[], ceeResult: CEEResult, ceeMode: string) => {
-    const total_ht = zones.reduce((sum, zone) => 
+    const total_ht = zones.reduce((sum, zone) =>
       sum + zone.lignes.reduce((zoneSum, ligne) => zoneSum + ligne.total, 0), 0
     );
-    
+
     const total_tva = total_ht * 0.20; // TVA 20%
     const total_ttc = total_ht + total_tva;
-    
+
     const prime_cee_deduite = ceeMode === 'deduction' ? ceeResult.prime_estimee : 0;
     const net_a_payer = total_ttc - prime_cee_deduite;
 
@@ -465,13 +464,13 @@ export default function OptimizedCEEGenerator({
   const updateDevisData = useCallback((updates: Partial<DevisData>) => {
     setDevisData(prev => {
       const newData = { ...prev, ...updates };
-      
+
       // Recalcul automatique des totaux
       if (updates.zones || updates.cee_result || updates.cee_mode) {
         const totals = calculateTotals(newData.zones, newData.cee_result, newData.cee_mode);
         Object.assign(newData, totals);
       }
-      
+
       return newData;
     });
   }, [calculateTotals]);
@@ -479,7 +478,7 @@ export default function OptimizedCEEGenerator({
   // ====== GESTION CEE ======
   const handleCEECalculation = useCallback(async () => {
     setIsCalculating(true);
-    
+
     // Simulation d'un calcul asynchrone
     setTimeout(() => {
       const result = calculateCEE(devisData.cee_params);
@@ -490,7 +489,7 @@ export default function OptimizedCEEGenerator({
 
   const updateCEEParams = useCallback((field: keyof CEEParams, value: any) => {
     const newParams = { ...devisData.cee_params, [field]: value };
-    
+
     // Calcul automatique du coefficient d'activité et facteur F
     if (field === 'profil_fonctionnement') {
       const profil = PROFILS_FONCTIONNEMENT.find(p => p.value === value);
@@ -498,14 +497,14 @@ export default function OptimizedCEEGenerator({
         newParams.coefficient_activite = profil.coefficient;
       }
     }
-    
+
     if (field === 'duree_contrat') {
       const duree = DUREES_CONTRAT.find(d => d.value === value);
       if (duree) {
         newParams.facteur_f = duree.facteur;
       }
     }
-    
+
     updateDevisData({ cee_params: newParams });
   }, [devisData.cee_params, updateDevisData]);
 
@@ -518,14 +517,14 @@ export default function OptimizedCEEGenerator({
       collapsed: false,
       visible_pdf: true
     };
-    
-    updateDevisData({ 
-      zones: [...devisData.zones, newZone] 
+
+    updateDevisData({
+      zones: [...devisData.zones, newZone]
     });
   }, [devisData.zones, generateId, updateDevisData]);
 
   const updateZone = useCallback((zoneId: string, updates: Partial<DevisZone>) => {
-    const newZones = devisData.zones.map(zone => 
+    const newZones = devisData.zones.map(zone =>
       zone.id === zoneId ? { ...zone, ...updates } : zone
     );
     updateDevisData({ zones: newZones });
@@ -548,18 +547,18 @@ export default function OptimizedCEEGenerator({
       total: 0,
       marge: 0
     };
-    
+
     const zone = devisData.zones.find(z => z.id === zoneId);
     if (zone) {
-      updateZone(zoneId, { 
-        lignes: [...zone.lignes, newLine] 
+      updateZone(zoneId, {
+        lignes: [...zone.lignes, newLine]
       });
     }
   }, [devisData.zones, generateId, updateZone]);
 
   const updateLine = useCallback((zoneId: string, lineId: string, field: keyof DevisLine, value: any) => {
     console.log('Mise à jour ligne:', { zoneId, lineId, field, value }); // Debug
-    
+
     const zone = devisData.zones.find(z => z.id === zoneId);
     if (!zone) {
       console.error('Zone non trouvée:', zoneId);
@@ -569,30 +568,30 @@ export default function OptimizedCEEGenerator({
     const newLignes = zone.lignes.map(ligne => {
       if (ligne.id === lineId) {
         const updated = { ...ligne, [field]: value };
-        
+
         // Recalcul automatique du total et de la marge
         if (field === 'quantite' || field === 'prix_unitaire') {
           updated.total = updated.quantite * updated.prix_unitaire;
           updated.marge = updated.total - (updated.quantite * updated.prix_achat);
         }
-        
+
         if (field === 'prix_achat') {
           updated.marge = updated.total - (updated.quantite * updated.prix_achat);
         }
-        
+
         console.log('Ligne mise à jour:', updated); // Debug
         return updated;
       }
       return ligne;
     });
-    
+
     updateZone(zoneId, { lignes: newLignes });
   }, [devisData.zones, updateZone]);
 
   const removeLine = useCallback((zoneId: string, lineId: string) => {
     const zone = devisData.zones.find(z => z.id === zoneId);
     if (!zone) return;
-    
+
     const newLignes = zone.lignes.filter(ligne => ligne.id !== lineId);
     updateZone(zoneId, { lignes: newLignes });
   }, [devisData.zones, updateZone]);
@@ -600,7 +599,7 @@ export default function OptimizedCEEGenerator({
   // Fonction spécifique pour la sélection d'article
   const handleArticleSelection = useCallback((zoneId: string, lineId: string, article: Article) => {
     console.log('Sélection article pour ligne:', { zoneId, lineId, article }); // Debug
-    
+
     // Mise à jour de tous les champs en une seule fois
     const zone = devisData.zones.find(z => z.id === zoneId);
     if (!zone) return;
@@ -615,41 +614,41 @@ export default function OptimizedCEEGenerator({
           tva: article.tva,
           article_id: article.id
         };
-        
+
         // Recalcul des totaux
         updated.total = updated.quantite * updated.prix_unitaire;
         updated.marge = updated.total - (updated.quantite * updated.prix_achat);
-        
+
         console.log('Article appliqué à la ligne:', updated); // Debug
         return updated;
       }
       return ligne;
     });
-    
+
     updateZone(zoneId, { lignes: newLignes });
   }, [devisData.zones, updateZone]);
 
   // ====== VALIDATION ======
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!selectedClient) {
       newErrors.client = 'Veuillez sélectionner un client';
     }
-    
+
     if (!devisData.objet.trim()) {
       newErrors.objet = 'L\'objet du devis est obligatoire';
     }
-    
+
     if (devisData.zones.length === 0) {
       newErrors.zones = 'Veuillez ajouter au moins une zone';
     }
-    
+
     const hasLines = devisData.zones.some(zone => zone.lignes.length > 0);
     if (!hasLines) {
       newErrors.lignes = 'Veuillez ajouter au moins une ligne de prestation';
     }
-    
+
     // Validation des lignes
     let hasInvalidLines = false;
     devisData.zones.forEach((zone, zoneIndex) => {
@@ -668,25 +667,25 @@ export default function OptimizedCEEGenerator({
         }
       });
     });
-    
+
     if (hasInvalidLines) {
       newErrors.lignes_validation = 'Certaines lignes contiennent des erreurs';
     }
-    
+
     // Validation CEE si des données sont renseignées
     if (devisData.cee_params.puissance_nominale > 0) {
       if (devisData.cee_result.kwh_cumac === 0) {
         newErrors.cee = 'Veuillez effectuer le calcul CEE ou mettre la puissance à 0';
       }
     }
-    
+
     setErrors(newErrors);
-    
+
     // Log des erreurs pour le debug
     if (Object.keys(newErrors).length > 0) {
       console.log('Erreurs de validation:', newErrors);
     }
-    
+
     return Object.keys(newErrors).length === 0;
   }, [selectedClient, devisData]);
 
@@ -705,31 +704,31 @@ export default function OptimizedCEEGenerator({
       description_operation: devisData.description_operation,
       type: 'CEE',
       statut: 'brouillon',
-      
+
       // Totaux financiers
       total_ht: devisData.total_ht,
       total_tva: devisData.total_tva,
       total_ttc: devisData.total_ttc,
       tva_taux: 20.00,
-      marge_totale: devisData.zones.reduce((sum, zone) => 
+      marge_totale: devisData.zones.reduce((sum, zone) =>
         sum + zone.lignes.reduce((zoneSum, ligne) => zoneSum + ligne.marge, 0), 0
       ),
-      
+
       // Conditions commerciales
       modalites_paiement: devisData.modalites_paiement,
       garantie: devisData.garantie,
       penalites: devisData.penalites,
       clause_juridique: 'Tout litige relève de la compétence du Tribunal de Commerce de Paris',
-      
+
       // Données CEE
       cee_kwh_cumac: devisData.cee_result.kwh_cumac,
       cee_prix_unitaire: devisData.cee_params.tarif_kwh,
       cee_montant_total: devisData.cee_result.prime_estimee,
       prime_cee: devisData.cee_result.prime_estimee, // Alias pour compatibilité
       reste_a_payer_ht: devisData.net_a_payer,
-      
+
       // Lignes de devis au format base de données
-      lignes_data: devisData.zones.flatMap(zone => 
+      lignes_data: devisData.zones.flatMap(zone =>
         zone.lignes.map((ligne, index) => ({
           description: ligne.designation,
           zone: zone.nom,
@@ -746,7 +745,7 @@ export default function OptimizedCEEGenerator({
           article_id: ligne.article_id || null
         }))
       ),
-      
+
       // Métadonnées CEE pour le PDF/affichage
       cee_calculation: {
         profil_fonctionnement: devisData.cee_params.profil_fonctionnement,
@@ -759,7 +758,7 @@ export default function OptimizedCEEGenerator({
         prime_estimee: devisData.cee_result.prime_estimee,
         operateur_nom: 'OXA Groupe'
       },
-      
+
       cee_integration: {
         mode: devisData.cee_mode,
         afficher_bloc: true
@@ -772,18 +771,90 @@ export default function OptimizedCEEGenerator({
   }, [validateForm, devisData, selectedClient, onSave]);
 
   // ====== INITIALISATION ======
+  // Remplacer le useEffect d'initialisation dans OXADevisGenerator.tsx
+
   useEffect(() => {
     if (existingDevis) {
-      // Charger les données existantes
-      const client = clients.find(c => c.id === existingDevis.client_id);
-      if (client) {
-        setSelectedClient(client);
+      console.log('Initialisation avec:', existingDevis); // Debug
+
+      // Trouver le client
+      const client = existingDevis.client || clients.find(c => c.id === existingDevis.client_id);
+
+      // Créer les zones à partir des lignes_data
+      const zones: DevisZone[] = [];
+      if (existingDevis.lignes_data && Array.isArray(existingDevis.lignes_data)) {
+        // Grouper les lignes par zone
+        const lignesParZone = existingDevis.lignes_data.reduce((acc: any, ligne: any) => {
+          const zoneName = ligne.zone || 'Général';
+          if (!acc[zoneName]) acc[zoneName] = [];
+          acc[zoneName].push(ligne);
+          return acc;
+        }, {});
+
+        // Créer les zones
+        Object.entries(lignesParZone).forEach(([zoneName, lignes]: [string, any]) => {
+          zones.push({
+            id: `zone-${Date.now()}-${zoneName}`,
+            nom: zoneName,
+            collapsed: false,
+            visible_pdf: true,
+            lignes: lignes.map((ligne: any, index: number) => ({
+              id: `ligne-${Date.now()}-${index}`,
+              designation: ligne.description || ligne.designation || '',
+              quantite: ligne.quantite || 1,
+              prix_unitaire: ligne.prix_unitaire || 0,
+              prix_achat: ligne.prix_achat || 0,
+              tva: ligne.tva || 20,
+              total: ligne.total_ht || ligne.prix_total || (ligne.quantite * ligne.prix_unitaire) || 0,
+              marge: ligne.marge || 0,
+              article_id: ligne.article_id
+            }))
+          });
+        });
       }
-      
-      // Mapper les données existantes...
-      // TODO: Implémenter le mapping des données existantes
+
+      // Reconstituer les paramètres CEE
+      const ceeParams: CEEParams = {
+        puissance_nominale: existingDevis.cee_calculation?.puissance_nominale || 0,
+        profil_fonctionnement: existingDevis.cee_calculation?.profil_fonctionnement || '1x8h',
+        duree_contrat: existingDevis.cee_calculation?.duree_contrat || 1,
+        coefficient_activite: existingDevis.cee_calculation?.coefficient_activite || 1,
+        facteur_f: existingDevis.cee_calculation?.facteur_f || 1,
+        tarif_kwh: existingDevis.cee_prix_unitaire || 0.002
+      };
+
+      // Reconstituer les résultats CEE
+      const ceeResult: CEEResult = {
+        kwh_cumac: existingDevis.cee_kwh_cumac || 0,
+        prime_estimee: existingDevis.cee_montant_total || 0
+      };
+
+      // Mettre à jour les données complètes
+      const mappedData: DevisData = {
+        client_id: existingDevis.client_id || '',
+        date_devis: existingDevis.date_devis || new Date().toISOString().split('T')[0],
+        objet: existingDevis.objet || '',
+        description_operation: existingDevis.description_operation || '',
+        cee_params: ceeParams,
+        cee_result: ceeResult,
+        cee_mode: existingDevis.cee_integration?.mode || 'deduction',
+        zones: zones,
+        total_ht: existingDevis.total_ht || 0,
+        total_tva: existingDevis.total_tva || 0,
+        total_ttc: existingDevis.total_ttc || 0,
+        prime_cee_deduite: existingDevis.cee_montant_total || 0,
+        net_a_payer: existingDevis.reste_a_payer_ht || existingDevis.total_ttc || 0,
+        modalites_paiement: existingDevis.modalites_paiement || '30% à la commande, 70% à la livraison',
+        garantie: existingDevis.garantie || '2 ans pièces et main d\'œuvre',
+        penalites: existingDevis.penalites || 'Pénalités de retard : 0,1% par jour de retard'
+      };
+
+      setDevisData(mappedData);
+      setSelectedClient(client || null);
+
+      console.log('Données mappées:', mappedData); // Debug
     }
-  }, [existingDevis, clients]);
+  }, [existingDevis, clients])
 
   // ====== RENDU ======
   return (
@@ -842,9 +913,8 @@ export default function OptimizedCEEGenerator({
             type="text"
             value={devisData.objet}
             onChange={(e) => updateDevisData({ objet: e.target.value })}
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.objet ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.objet ? 'border-red-500' : 'border-gray-300'
+              }`}
             placeholder="Ex: Mise en place d'un système de mesurage IPE"
           />
           {errors.objet && <p className="text-red-500 text-sm mt-1">{errors.objet}</p>}
@@ -888,7 +958,7 @@ export default function OptimizedCEEGenerator({
             <label className="block text-sm font-medium text-gray-700 mb-2">Puissance nominale (kW)</label>
             <input
               type="number"
-              value={devisData.cee_params.puissance_nominale}
+              value={devisData.cee_params?.puissance_nominale || 0}
               onChange={(e) => updateCEEParams('puissance_nominale', Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="0"
@@ -1171,9 +1241,8 @@ export default function OptimizedCEEGenerator({
                                 type="text"
                                 value={formatCurrency(ligne.marge)}
                                 readOnly
-                                className={`w-full px-2 py-1 border border-gray-300 rounded text-xs font-medium ${
-                                  ligne.marge >= 0 ? 'text-green-600' : 'text-red-600'
-                                }`}
+                                className={`w-full px-2 py-1 border border-gray-300 rounded text-xs font-medium ${ligne.marge >= 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}
                               />
                             </div>
                             <div>
@@ -1182,9 +1251,8 @@ export default function OptimizedCEEGenerator({
                                 type="text"
                                 value={ligne.total > 0 ? `${((ligne.marge / ligne.total) * 100).toFixed(1)}%` : '0%'}
                                 readOnly
-                                className={`w-full px-2 py-1 border border-gray-300 rounded text-xs font-medium ${
-                                  ligne.marge >= 0 ? 'text-green-600' : 'text-red-600'
-                                }`}
+                                className={`w-full px-2 py-1 border border-gray-300 rounded text-xs font-medium ${ligne.marge >= 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}
                               />
                             </div>
                           </div>
@@ -1218,7 +1286,7 @@ export default function OptimizedCEEGenerator({
       {devisData.zones.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Récapitulatif financier</h2>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Totaux du devis */}
             <div>
@@ -1236,7 +1304,7 @@ export default function OptimizedCEEGenerator({
                   <span className="font-medium text-gray-900">Total TTC:</span>
                   <span className="font-bold text-lg">{formatCurrency(devisData.total_ttc)}</span>
                 </div>
-                
+
                 {devisData.cee_mode === 'deduction' && devisData.prime_cee_deduite > 0 && (
                   <>
                     <div className="flex justify-between text-green-600">
@@ -1287,7 +1355,7 @@ export default function OptimizedCEEGenerator({
       {/* Conditions commerciales */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Conditions commerciales</h2>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Modalités de paiement</label>
@@ -1298,7 +1366,7 @@ export default function OptimizedCEEGenerator({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Garantie</label>
             <textarea
@@ -1308,7 +1376,7 @@ export default function OptimizedCEEGenerator({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
           </div>
-          
+
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">Pénalités de retard</label>
             <input
@@ -1339,7 +1407,7 @@ export default function OptimizedCEEGenerator({
             {existingDevis ? 'Mettre à jour le devis' : 'Enregistrer le devis'}
           </button>
         </div>
-        
+
         {Object.keys(errors).length > 0 && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <h4 className="font-medium text-red-800 mb-2">⚠️ Erreurs de validation :</h4>

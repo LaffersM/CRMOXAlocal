@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured, OXADevis, Client, Article } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { 
-  FileText, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  FileText,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
   Eye,
   Calendar,
   Euro,
@@ -112,7 +112,7 @@ export function DevisPage() {
             updated_at: new Date().toISOString()
           }
         ])
-        
+
         setDevis([
           {
             id: '1',
@@ -192,124 +192,124 @@ export function DevisPage() {
 
   // Ajoutez cette fonction corrigée dans votre DevisPage.tsx
 
-const handleCreateDevis = async (devisData: any) => {
-  try {
-    console.log('Données reçues du générateur:', devisData); // Debug
+  const handleCreateDevis = async (devisData: any) => {
+    try {
+      console.log('Données reçues du générateur:', devisData); // Debug
 
-    if (!isSupabaseConfigured()) {
-      const newDevis: OXADevis = {
-        id: Date.now().toString(),
-        numero: `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
-        date_creation: new Date().toISOString().split('T')[0],
-        ...devisData,
-        commercial_id: profile?.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      if (!isSupabaseConfigured()) {
+        const newDevis: OXADevis = {
+          id: Date.now().toString(),
+          numero: `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+          date_creation: new Date().toISOString().split('T')[0],
+          ...devisData,
+          commercial_id: profile?.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        setDevis([newDevis, ...devis])
+        setShowOXAGenerator(false)
+        setShowStandardGenerator(false)
+        return
       }
-      setDevis([newDevis, ...devis])
+
+      // Générer un numéro de devis unique
+      const year = new Date().getFullYear()
+      const timestamp = Date.now().toString().slice(-6)
+      const numero = `DEV-${year}-${timestamp}`
+
+      // Préparer les données pour Supabase
+      const supabaseData = {
+        // Champs obligatoires de base
+        numero,
+        date_devis: devisData.date_devis || new Date().toISOString().split('T')[0],
+        date_creation: new Date().toISOString().split('T')[0],
+        objet: devisData.objet,
+        client_id: devisData.client_id,
+        commercial_id: profile?.id,
+
+        // Type et statut
+        type: devisData.type || 'CEE',
+        statut: devisData.statut || 'brouillon',
+
+        // Montants financiers
+        total_ht: devisData.total_ht || 0,
+        total_tva: devisData.total_tva || 0,
+        total_ttc: devisData.total_ttc || 0,
+        tva_taux: devisData.tva_taux || 20.00,
+        marge_totale: devisData.marge_totale || 0,
+
+        // Conditions commerciales
+        modalites_paiement: devisData.modalites_paiement || null,
+        garantie: devisData.garantie || null,
+        penalites: devisData.penalites || null,
+        clause_juridique: devisData.clause_juridique || null,
+
+        // Champs spécifiques CEE (optionnels)
+        ...(devisData.cee_kwh_cumac && {
+          cee_kwh_cumac: devisData.cee_kwh_cumac,
+          cee_prix_unitaire: devisData.cee_prix_unitaire || 0.002,
+          cee_montant_total: devisData.cee_montant_total || devisData.prime_cee || 0,
+          reste_a_payer_ht: devisData.reste_a_payer_ht || devisData.net_a_payer || 0
+        }),
+
+        // Données des lignes
+        lignes_data: devisData.lignes_data || [],
+
+        // Champs texte optionnels
+        description_operation: devisData.description_operation || null,
+        remarques: devisData.remarques || null
+      }
+
+      // Nettoyer les champs qui ne sont pas dans la base de données
+      delete supabaseData.client
+      delete supabaseData.lignes
+      delete supabaseData.zones
+      delete supabaseData.cee_params
+      delete supabaseData.cee_result
+      delete supabaseData.cee_mode
+      delete supabaseData.cee_integration
+      delete supabaseData.cee_calculation
+      delete supabaseData.prime_cee_deduite
+      delete supabaseData.net_a_payer
+
+      console.log('Données à envoyer à Supabase:', supabaseData); // Debug
+
+      const { data, error } = await supabase
+        .from('devis')
+        .insert([supabaseData])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Erreur Supabase détaillée:', error)
+        throw error
+      }
+
+      console.log('Devis créé avec succès:', data); // Debug
+
+      setDevis([data, ...devis])
       setShowOXAGenerator(false)
       setShowStandardGenerator(false)
-      return
-    }
 
-    // Générer un numéro de devis unique
-    const year = new Date().getFullYear()
-    const timestamp = Date.now().toString().slice(-6)
-    const numero = `DEV-${year}-${timestamp}`
+      // Message de succès
+      alert('Devis créé avec succès !')
 
-    // Préparer les données pour Supabase
-    const supabaseData = {
-      // Champs obligatoires de base
-      numero,
-      date_devis: devisData.date_devis || new Date().toISOString().split('T')[0],
-      date_creation: new Date().toISOString().split('T')[0],
-      objet: devisData.objet,
-      client_id: devisData.client_id,
-      commercial_id: profile?.id,
-      
-      // Type et statut
-      type: devisData.type || 'CEE',
-      statut: devisData.statut || 'brouillon',
-      
-      // Montants financiers
-      total_ht: devisData.total_ht || 0,
-      total_tva: devisData.total_tva || 0,
-      total_ttc: devisData.total_ttc || 0,
-      tva_taux: devisData.tva_taux || 20.00,
-      marge_totale: devisData.marge_totale || 0,
-      
-      // Conditions commerciales
-      modalites_paiement: devisData.modalites_paiement || null,
-      garantie: devisData.garantie || null,
-      penalites: devisData.penalites || null,
-      clause_juridique: devisData.clause_juridique || null,
-      
-      // Champs spécifiques CEE (optionnels)
-      ...(devisData.cee_kwh_cumac && {
-        cee_kwh_cumac: devisData.cee_kwh_cumac,
-        cee_prix_unitaire: devisData.cee_prix_unitaire || 0.002,
-        cee_montant_total: devisData.cee_montant_total || devisData.prime_cee || 0,
-        reste_a_payer_ht: devisData.reste_a_payer_ht || devisData.net_a_payer || 0
-      }),
-      
-      // Données des lignes
-      lignes_data: devisData.lignes_data || [],
-      
-      // Champs texte optionnels
-      description_operation: devisData.description_operation || null,
-      remarques: devisData.remarques || null
-    }
+    } catch (error: any) {
+      console.error('Error creating devis:', error)
 
-    // Nettoyer les champs qui ne sont pas dans la base de données
-    delete supabaseData.client
-    delete supabaseData.lignes
-    delete supabaseData.zones
-    delete supabaseData.cee_params
-    delete supabaseData.cee_result
-    delete supabaseData.cee_mode
-    delete supabaseData.cee_integration
-    delete supabaseData.cee_calculation
-    delete supabaseData.prime_cee_deduite
-    delete supabaseData.net_a_payer
-
-    console.log('Données à envoyer à Supabase:', supabaseData); // Debug
-
-    const { data, error } = await supabase
-      .from('devis')
-      .insert([supabaseData])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Erreur Supabase détaillée:', error)
-      throw error
-    }
-
-    console.log('Devis créé avec succès:', data); // Debug
-    
-    setDevis([data, ...devis])
-    setShowOXAGenerator(false)
-    setShowStandardGenerator(false)
-    
-    // Message de succès
-    alert('Devis créé avec succès !')
-    
-  } catch (error: any) {
-    console.error('Error creating devis:', error)
-    
-    // Message d'erreur détaillé
-    if (error?.message) {
-      alert(`Erreur lors de la création du devis: ${error.message}`)
-    } else {
-      alert('Erreur inconnue lors de la création du devis')
+      // Message d'erreur détaillé
+      if (error?.message) {
+        alert(`Erreur lors de la création du devis: ${error.message}`)
+      } else {
+        alert('Erreur inconnue lors de la création du devis')
+      }
     }
   }
-}
 
   const handleUpdateDevis = async (id: string, devisData: any) => {
     try {
       if (!isSupabaseConfigured()) {
-        setDevis(devis.map(d => 
+        setDevis(devis.map(d =>
           d.id === id ? { ...d, ...devisData, updated_at: new Date().toISOString() } : d
         ))
         setEditingDevis(null)
@@ -322,13 +322,13 @@ const handleCreateDevis = async (devisData: any) => {
       const supabaseData = {
         ...devisData
       }
-      
+
       // Map client object to client_id if present
       if (supabaseData.client) {
         supabaseData.client_id = supabaseData.client.id
         delete supabaseData.client
       }
-      
+
       // Remove lignes field as it doesn't exist in database - only lignes_data exists
       delete supabaseData.lignes
 
@@ -383,9 +383,9 @@ const handleCreateDevis = async (devisData: any) => {
     const client = clients.find(c => c.id === devis.client_id)
     const searchLower = searchTerm.toLowerCase()
     const matchesSearch = devis.numero.toLowerCase().includes(searchLower) ||
-                         client?.nom.toLowerCase().includes(searchLower) ||
-                         client?.entreprise.toLowerCase().includes(searchLower) ||
-                         devis.objet.toLowerCase().includes(searchLower)
+      client?.nom.toLowerCase().includes(searchLower) ||
+      client?.entreprise.toLowerCase().includes(searchLower) ||
+      devis.objet.toLowerCase().includes(searchLower)
     const matchesStatus = statusFilter === 'all' || devis.statut === statusFilter
     const matchesType = typeFilter === 'all' || devis.type === typeFilter
     return matchesSearch && matchesStatus && matchesType
@@ -425,6 +425,14 @@ const handleCreateDevis = async (devisData: any) => {
     }).format(value)
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -442,7 +450,7 @@ const handleCreateDevis = async (devisData: any) => {
         clients={clients}
         articles={articles}
         onClientCreated={handleClientCreated}
-        onSave={editingDevis 
+        onSave={editingDevis
           ? (data) => handleUpdateDevis(editingDevis.id, data)
           : handleCreateDevis
         }
@@ -461,7 +469,7 @@ const handleCreateDevis = async (devisData: any) => {
         clients={clients}
         articles={articles}
         onClientCreated={handleClientCreated}
-        onSave={editingDevis 
+        onSave={editingDevis
           ? (data) => handleUpdateDevis(editingDevis.id, data)
           : handleCreateDevis
         }
@@ -637,115 +645,273 @@ const handleCreateDevis = async (devisData: any) => {
         </div>
       </div>
 
-      {/* Devis Table */}
+      {/* Devis List - Responsive */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+
+        {/* Version mobile - Cartes empilées */}
+        <div className="block lg:hidden">
+          <div className="space-y-4 p-4">
+            {filteredDevis.map((devis) => {
+              const client = clients.find(c => c.id === devis.client_id)
+              const StatusIcon = getStatusIcon(devis.statut)
+              return (
+                <div key={devis.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-900">{devis.numero}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${devis.type === 'IPE' ? 'bg-blue-100 text-blue-800' :
+                          devis.type === 'ELEC' ? 'bg-yellow-100 text-yellow-800' :
+                            devis.type === 'MATERIEL' ? 'bg-green-100 text-green-800' :
+                              devis.type === 'MAIN_OEUVRE' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'
+                          }`}>
+                          {devis.type}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-700 truncate">
+                        {client ? `${client.nom} - ${client.entreprise}` : 'Client inconnu'}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">{devis.objet}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                    <div>
+                      <span className="text-gray-500">Montant TTC:</span>
+                      <div className="font-semibold text-gray-900">{formatCurrency(devis.total_ttc)}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Prime CEE:</span>
+                      <div className="font-semibold text-gray-900">
+                        {devis.cee_montant_total ? formatCurrency(devis.cee_montant_total) : '-'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Date:</span>
+                      <div className="flex items-center">
+                        <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+                        {formatDate(devis.date_devis)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Statut:</span>
+                      <div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(getStatusColor(devis.statut))}`}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {statusOptions.find(s => s.value === devis.statut)?.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        setSelectedDevis(devis)
+                        setShowDetails(true)
+                      }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Voir"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Récupérer le client associé
+                        const associatedClient = clients.find(c => c.id === devis.client_id)
+
+                        // Enrichir le devis avec le client et corriger les valeurs null
+                        const enrichedDevis = {
+                          ...devis,
+                          client: associatedClient,
+                          objet: devis.objet || '',
+                          description_operation: devis.description_operation || '',
+                          remarques: devis.remarques || '',
+                          modalites_paiement: devis.modalites_paiement || '30% à la commande, 70% à la livraison',
+                          garantie: devis.garantie || '2 ans pièces et main d\'œuvre',
+                          penalites: devis.penalites || 'Pénalités de retard : 0,1% par jour',
+                          clause_juridique: devis.clause_juridique || 'Tribunal de Commerce de Paris',
+                          delais: devis.delais || '4 à 6 semaines après validation du devis',
+                          // AJOUTER les données CEE par défaut
+                          cee_kwh_cumac: devis.cee_kwh_cumac || 0,
+                          cee_prix_unitaire: devis.cee_prix_unitaire || 0.002,
+                          cee_montant_total: devis.cee_montant_total || 0,
+                          reste_a_payer_ht: devis.reste_a_payer_ht || 0,
+                          // AJOUTER la structure de calcul CEE
+                          cee_calculation: devis.cee_calculation || {
+                            puissance_nominale: 0,
+                            profil_fonctionnement: '1x8h',
+                            duree_contrat: 1,
+                            coefficient_activite: 1,
+                            facteur_f: 1,
+                            tarif_kwh: 0.002
+                          },
+                          cee_integration: devis.cee_integration || {
+                            mode: 'deduction',
+                            afficher_bloc: true
+                          }
+                        }
+
+                        setEditingDevis(enrichedDevis)
+
+                        // Décider quelle interface ouvrir
+                        const isCEEDevis = (devis.type === 'CEE' || devis.type === 'cee') && (devis.cee_montant_total && devis.cee_montant_total > 0)
+
+                        if (isCEEDevis) {
+                          setShowOXAGenerator(true)
+                        } else {
+                          setShowStandardGenerator(true)
+                        }
+                      }}
+                      className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                      title="Modifier"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDevis(devis.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Version desktop - Tableau compact */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Numéro
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Client
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Objet
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Montant TTC
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Prime CEE
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date création
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredDevis.map((devis) => {
+                const client = clients.find(c => c.id === devis.client_id)
                 const StatusIcon = getStatusIcon(devis.statut)
                 return (
                   <tr key={devis.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{devis.numero}</div>
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 max-w-[140px] truncate" title={getClientName(devis.client_id)}>
+                        {client ? client.entreprise : 'Client inconnu'}
+                      </div>
+                      <div className="text-xs text-gray-500 max-w-[140px] truncate">
+                        {devis.numero}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{getClientName(devis.client_id)}</div>
+                    <td className="px-3 py-4">
+                      <div className="text-sm text-gray-900 max-w-[180px] truncate" title={devis.objet}>
+                        {devis.objet}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">{devis.objet}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        devis.type === 'IPE' ? 'bg-blue-100 text-blue-800' :
+                    <td className="px-2 py-4 whitespace-nowrap text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${devis.type === 'IPE' ? 'bg-blue-100 text-blue-800' :
                         devis.type === 'ELEC' ? 'bg-yellow-100 text-yellow-800' :
-                        devis.type === 'MATERIEL' ? 'bg-green-100 text-green-800' :
-                        devis.type === 'MAIN_OEUVRE' ? 'bg-purple-100 text-purple-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          devis.type === 'MATERIEL' ? 'bg-green-100 text-green-800' :
+                            devis.type === 'MAIN_OEUVRE' ? 'bg-purple-100 text-purple-800' :
+                              'bg-orange-100 text-orange-800'
+                        }`}>
                         {devis.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(getStatusColor(devis.statut))}`}>
+                    <td className="px-2 py-4 whitespace-nowrap text-center">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(getStatusColor(devis.statut))}`}>
                         <StatusIcon className="h-3 w-3 mr-1" />
-                        {statusOptions.find(s => s.value === devis.statut)?.label}
+                        {devis.statut === 'brouillon' ? 'Brouillon' :
+                          devis.statut === 'envoye' ? 'Envoyé' :
+                            devis.statut === 'accepte' ? 'Accepté' :
+                              devis.statut === 'refuse' ? 'Refusé' :
+                                'Expiré'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formatCurrency(devis.total_ttc)}</div>
+                    <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      {formatCurrency(devis.total_ttc)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {devis.cee_montant_total ? formatCurrency(devis.cee_montant_total) : '-'}
-                      </div>
+                    <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      {devis.cee_montant_total ? formatCurrency(devis.cee_montant_total) : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(devis.date_devis).toLocaleDateString('fr-FR')}
-                      </div>
+                    <td className="px-2 py-4 whitespace-nowrap text-center text-xs text-gray-500">
+                      {formatDate(devis.date_devis)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
+                    <td className="px-3 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => {
                             setSelectedDevis(devis)
                             setShowDetails(true)
                           }}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                          title="Voir les détails"
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Voir"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => {
-                            setEditingDevis(devis)
-                            if (devis.cee_montant_total > 0) {
+                            // Récupérer le client associé
+                            const associatedClient = clients.find(c => c.id === devis.client_id)
+
+                            // Enrichir le devis avec le client et corriger les valeurs null
+                            const enrichedDevis = {
+                              ...devis,
+                              client: associatedClient,
+                              objet: devis.objet || '',
+                              description_operation: devis.description_operation || '',
+                              remarques: devis.remarques || '',
+                              modalites_paiement: devis.modalites_paiement || '30% à la commande, 70% à la livraison',
+                              garantie: devis.garantie || '2 ans pièces et main d\'œuvre',
+                              penalites: devis.penalites || 'Pénalités de retard : 0,1% par jour',
+                              clause_juridique: devis.clause_juridique || 'Tribunal de Commerce de Paris',
+                              delais: devis.delais || '4 à 6 semaines après validation du devis'
+                            }
+
+                            setEditingDevis(enrichedDevis)
+
+                            // Décider quelle interface ouvrir
+                            const isCEEDevis = (devis.type === 'CEE' || devis.type === 'cee') || (devis.cee_montant_total && devis.cee_montant_total > 0)
+
+                            if (isCEEDevis) {
                               setShowOXAGenerator(true)
                             } else {
                               setShowStandardGenerator(true)
                             }
                           }}
-                          className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
+                          className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                           title="Modifier"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteDevis(devis.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded"
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
