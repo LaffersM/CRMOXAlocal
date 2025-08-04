@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured, OXADevis, Client, Article } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import ConversionDevisModal from '../commandes/ConversionDevisModal';
+import { ShoppingCart } from 'lucide-react';
 import {
   FileText,
   Search,
@@ -200,6 +202,8 @@ function ConversionModal({ isOpen, devis, client, onClose, onConvertToCommande, 
 
 export function DevisPage() {
   const [showConversionModal, setShowConversionModal] = useState(false)
+  const [devisToConvert, setDevisToConvert] = useState<OXADevis | null>(null);
+  const [showPlanificationModal, setShowPlanificationModal] = useState(false);
   const [selectedDevisForConversion, setSelectedDevisForConversion] = useState<OXADevis | null>(null)
   const { profile } = useAuth()
   const [devis, setDevis] = useState<OXADevis[]>([])
@@ -669,15 +673,31 @@ export function DevisPage() {
   }
 
   // Fonctions de conversion
-  const handleConvertToCommande = () => {
-    if (selectedDevisForConversion) {
-      // Ici vous pouvez rediriger vers la page des commandes ou créer une nouvelle commande
-      console.log('Conversion en commande:', selectedDevisForConversion)
-      alert('Fonctionnalité de conversion en commande à implémenter')
-      setShowConversionModal(false)
-      setSelectedDevisForConversion(null)
-    }
-  }
+  const handleConvertToCommande = (devis: OXADevis) => {
+    // Préparer les données du devis pour la conversion
+    const devisForConversion = {
+      id: devis.id,
+      numero: devis.numero,
+      client_id: devis.client_id,
+      total_ht: devis.total_ht,
+      total_ttc: devis.total_ttc,
+      client: clients.find(c => c.id === devis.client_id)
+    };
+
+    // Fermer la première modal et ouvrir la modal de planification
+    setShowConversionModal(false);
+    setSelectedDevisForConversion(null);
+    setDevisToConvert(devisForConversion);
+    setShowPlanificationModal(true);
+  };
+
+  const handleConversionSuccess = (commandeId: string) => {
+    console.log('Commande créée depuis devis:', commandeId);
+    setShowConversionModal(false);
+    setSelectedDevisForConversion(null);
+    // Actualiser la liste des devis
+    fetchData();
+  };
 
   const handleConvertToFacture = () => {
     if (selectedDevisForConversion) {
@@ -1251,6 +1271,18 @@ export function DevisPage() {
           </div>
         )}
       </div>
+      {/* Modal Conversion Devis → Commande */}
+      {devisToConvert && (
+        <ConversionDevisModal
+          devis={devisToConvert}
+          isOpen={showPlanificationModal}
+          onClose={() => {
+            setShowPlanificationModal(false);
+            setDevisToConvert(null);
+          }}
+          onSuccess={handleConversionSuccess}
+        />
+      )}
     </div>
   )
 }
