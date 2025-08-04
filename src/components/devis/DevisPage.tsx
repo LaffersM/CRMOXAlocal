@@ -16,7 +16,9 @@ import {
   X,
   Clock,
   Zap,
-  ChevronDown
+  ChevronDown,
+  Package,
+  Receipt
 } from 'lucide-react'
 import OXADevisGenerator from './OXADevisGenerator'
 import { DevisDetails } from './DevisDetails'
@@ -25,7 +27,7 @@ import { DevisDetails } from './DevisDetails'
 interface StatusDropdownProps {
   currentStatus: string;
   devisId: string;
-  onStatusChange: (devisId: string, newStatus: string) => void;
+  onStatusChange: (devisId: string, newStatus: string, triggerConversion?: boolean) => void;
   disabled?: boolean;
 }
 
@@ -45,7 +47,12 @@ function StatusDropdown({ currentStatus, devisId, onStatusChange, disabled }: St
 
   const handleStatusSelect = (newStatus: string) => {
     if (newStatus !== currentStatus) {
-      onStatusChange(devisId, newStatus)
+      // Si on passe en "accepté", déclencher la modal de conversion
+      if (newStatus === 'accepte' && currentStatus !== 'accepte') {
+        onStatusChange(devisId, newStatus, true) // true = déclencher conversion
+      } else {
+        onStatusChange(devisId, newStatus, false)
+      }
     }
     setIsOpen(false)
   }
@@ -105,7 +112,95 @@ function StatusDropdown({ currentStatus, devisId, onStatusChange, disabled }: St
   )
 }
 
+// Modal de conversion
+interface ConversionModalProps {
+  isOpen: boolean;
+  devis: OXADevis | null;
+  client: Client | null;
+  onClose: () => void;
+  onConvertToCommande: () => void;
+  onConvertToFacture: () => void;
+}
+
+function ConversionModal({ isOpen, devis, client, onClose, onConvertToCommande, onConvertToFacture }: ConversionModalProps) {
+  if (!isOpen || !devis) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Devis accepté !
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-sm text-gray-600 mb-2">
+              Le devis <span className="font-medium">{devis.numero}</span> pour {client?.entreprise} a été accepté.
+            </p>
+            <p className="text-sm text-gray-600">
+              Que souhaitez-vous faire maintenant ?
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={onConvertToCommande}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+            >
+              <div className="flex items-center">
+                <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                  <Package className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium text-gray-900">Convertir en Commande</div>
+                  <div className="text-sm text-gray-500">Suivre l'installation et la livraison</div>
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-gray-400 rotate-[-90deg]" />
+            </button>
+
+            <button
+              onClick={onConvertToFacture}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-colors"
+            >
+              <div className="flex items-center">
+                <div className="bg-green-100 p-2 rounded-lg mr-3">
+                  <Receipt className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium text-gray-900">Convertir en Facture</div>
+                  <div className="text-sm text-gray-500">Facturation directe</div>
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-gray-400 rotate-[-90deg]" />
+            </button>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Décider plus tard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function DevisPage() {
+  const [showConversionModal, setShowConversionModal] = useState(false)
+  const [selectedDevisForConversion, setSelectedDevisForConversion] = useState<OXADevis | null>(null)
   const { profile } = useAuth()
   const [devis, setDevis] = useState<OXADevis[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -272,8 +367,6 @@ export function DevisPage() {
       setLoading(false)
     }
   }
-
-  // Ajoutez cette fonction corrigée dans votre DevisPage.tsx
 
   const handleCreateDevis = async (devisData: any) => {
     try {
@@ -492,6 +585,59 @@ export function DevisPage() {
       }
     }
   }
+
+  const handleStatusChange = async (devisId: string, newStatus: string, triggerConversion: boolean = false) => {
+    try {
+      // Vérifier si on passe en "accepté" pour déclencher la conversion
+      const currentDevis = devis.find(d => d.id === devisId)
+
+      if (!isSupabaseConfigured()) {
+        // Mode démo
+        const updatedDevis = { ...currentDevis!, statut: newStatus, updated_at: new Date().toISOString() }
+        setDevis(devis.map(d =>
+          d.id === devisId ? updatedDevis : d
+        ))
+
+        // Si conversion déclenchée, ouvrir la modal
+        if (triggerConversion && currentDevis) {
+          setSelectedDevisForConversion(updatedDevis)
+          setShowConversionModal(true)
+        } else {
+          const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus
+          alert(`Statut changé vers "${statusLabel}" avec succès !`)
+        }
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('devis')
+        .update({
+          statut: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', devisId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setDevis(devis.map(d => d.id === devisId ? data : d))
+
+      // Si conversion déclenchée, ouvrir la modal
+      if (triggerConversion) {
+        setSelectedDevisForConversion(data)
+        setShowConversionModal(true)
+      } else {
+        const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus
+        alert(`Statut changé vers "${statusLabel}" avec succès !`)
+      }
+
+    } catch (error: any) {
+      console.error('Erreur changement de statut:', error)
+      alert(`Erreur lors du changement de statut: ${error.message}`)
+    }
+  }
+
   const handleDeleteDevis = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce devis ?')) return
 
@@ -513,40 +659,6 @@ export function DevisPage() {
     }
   }
 
-  const handleStatusChange = async (devisId: string, newStatus: string) => {
-    try {
-      if (!isSupabaseConfigured()) {
-        // Mode démo
-        setDevis(devis.map(d =>
-          d.id === devisId ? { ...d, statut: newStatus, updated_at: new Date().toISOString() } : d
-        ))
-        return
-      }
-
-      const { data, error } = await supabase
-        .from('devis')
-        .update({
-          statut: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', devisId)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setDevis(devis.map(d => d.id === devisId ? data : d))
-
-      // Message de succès
-      const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus
-      alert(`Statut changé vers "${statusLabel}" avec succès !`)
-
-    } catch (error: any) {
-      console.error('Erreur changement de statut:', error)
-      alert(`Erreur lors du changement de statut: ${error.message}`)
-    }
-  }
-
   const handleClientCreated = (newClient: Client) => {
     setClients([newClient, ...clients])
   }
@@ -554,6 +666,27 @@ export function DevisPage() {
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId)
     return client ? `${client.nom} - ${client.entreprise}` : 'Client inconnu'
+  }
+
+  // Fonctions de conversion
+  const handleConvertToCommande = () => {
+    if (selectedDevisForConversion) {
+      // Ici vous pouvez rediriger vers la page des commandes ou créer une nouvelle commande
+      console.log('Conversion en commande:', selectedDevisForConversion)
+      alert('Fonctionnalité de conversion en commande à implémenter')
+      setShowConversionModal(false)
+      setSelectedDevisForConversion(null)
+    }
+  }
+
+  const handleConvertToFacture = () => {
+    if (selectedDevisForConversion) {
+      // Ici vous pouvez rediriger vers la page des factures ou créer une nouvelle facture
+      console.log('Conversion en facture:', selectedDevisForConversion)
+      alert('Fonctionnalité de conversion en facture à implémenter')
+      setShowConversionModal(false)
+      setSelectedDevisForConversion(null)
+    }
   }
 
   const filteredDevis = devis.filter(devis => {
@@ -640,8 +773,6 @@ export function DevisPage() {
     )
   }
 
-
-
   if (showDetails && selectedDevis) {
     const client = clients.find(c => c.id === selectedDevis.client_id)
     return (
@@ -696,6 +827,19 @@ export function DevisPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Modal de conversion */}
+      <ConversionModal
+        isOpen={showConversionModal}
+        devis={selectedDevisForConversion}
+        client={selectedDevisForConversion ? clients.find(c => c.id === selectedDevisForConversion.client_id) || null : null}
+        onClose={() => {
+          setShowConversionModal(false)
+          setSelectedDevisForConversion(null)
+        }}
+        onConvertToCommande={handleConvertToCommande}
+        onConvertToFacture={handleConvertToFacture}
+      />
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -709,7 +853,6 @@ export function DevisPage() {
             </p>
           </div>
           <div className="flex space-x-3">
-
             <button
               onClick={() => {
                 setEditingDevis(null)
@@ -827,7 +970,6 @@ export function DevisPage() {
 
       {/* Devis List - Responsive */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
         {/* Version mobile - Cartes empilées */}
         <div className="block lg:hidden">
           <div className="space-y-4 p-4">
@@ -874,33 +1016,14 @@ export function DevisPage() {
                         {formatDate(devis.date_devis)}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                    <div>
+                      <span className="text-gray-500">Statut:</span>
                       <div>
-                        <span className="text-gray-500">Montant TTC:</span>
-                        <div className="font-semibold text-gray-900">{formatCurrency(devis.total_ttc)}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Prime CEE:</span>
-                        <div className="font-semibold text-gray-900">
-                          {devis.cee_montant_total ? formatCurrency(devis.cee_montant_total) : '-'}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Date:</span>
-                        <div className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                          {formatDate(devis.date_devis)}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Statut:</span>
-                        <div>
-                          <StatusDropdown
-                            currentStatus={devis.statut}
-                            devisId={devis.id}
-                            onStatusChange={handleStatusChange}
-                          />
-                        </div>
+                        <StatusDropdown
+                          currentStatus={devis.statut}
+                          devisId={devis.id}
+                          onStatusChange={handleStatusChange}
+                        />
                       </div>
                     </div>
                   </div>
@@ -954,10 +1077,6 @@ export function DevisPage() {
                         }
 
                         setEditingDevis(enrichedDevis)
-
-                        // Décider quelle interface ouvrir
-
-
                         setShowOXAGenerator(true)
                       }}
                       className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
@@ -1087,9 +1206,6 @@ export function DevisPage() {
                             }
 
                             setEditingDevis(enrichedDevis)
-
-                            // Décider quelle interface ouvrir
-
                             setShowOXAGenerator(true)
                           }}
                           className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
@@ -1124,7 +1240,6 @@ export function DevisPage() {
               }
             </p>
             <div className="mt-6 flex justify-center space-x-3">
-
               <button
                 onClick={() => setShowOXAGenerator(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
