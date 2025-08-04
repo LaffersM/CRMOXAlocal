@@ -94,6 +94,7 @@ export function CommandesPage() {
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showNouvelleCommandeModal, setShowNouvelleCommandeModal] = useState(false);
+  const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
   const [showConversionModal, setShowConversionModal] = useState(false);
   const [selectedDevis, setSelectedDevis] = useState<any>(null);
 
@@ -459,6 +460,10 @@ export function CommandesPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
+                        onClick={() => {
+                          setEditingCommande(commande);
+                          setShowNouvelleCommandeModal(true);
+                        }}
                         className="text-gray-600 hover:text-gray-800 p-1 rounded"
                         title="Modifier"
                       >
@@ -535,8 +540,16 @@ export function CommandesPage() {
       {/* Modal Nouvelle Commande */}
       <NouvelleCommandeModal
         isOpen={showNouvelleCommandeModal}
-        onClose={() => setShowNouvelleCommandeModal(false)}
-        onSuccess={handleCommandeCreated}
+        onClose={() => {
+          setShowNouvelleCommandeModal(false);
+          setEditingCommande(null); // Remettre à null à la fermeture
+        }}
+        onSuccess={(commandeId) => {
+          console.log('Commande créée/modifiée:', commandeId);
+          loadCommandes(); // Recharger la liste
+          setEditingCommande(null); // Remettre à null après succès
+        }}
+        existingCommande={editingCommande} // Passer la commande à modifier (ou null pour création)
       />
 
       {/* Modal Conversion Devis */}

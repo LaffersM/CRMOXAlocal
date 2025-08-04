@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { 
-  Calendar, 
-  Users, 
-  Clock, 
-  MapPin, 
-  Phone, 
-  FileText, 
-  X, 
+import {
+  Calendar,
+  Users,
+  Clock,
+  MapPin,
+  Phone,
+  FileText,
+  X,
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
@@ -38,13 +38,14 @@ interface ConversionModalProps {
 
 // ==================== COMPOSANT MODAL ====================
 
-export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess }: ConversionModalProps) {  const [loading, setLoading] = useState(false);
+export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess }: ConversionModalProps) {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // État du formulaire
   const [formData, setFormData] = useState({
     date_installation_prevue: '',
-    equipe_assignee: '',
+    equipe_assignee: 'Équipe Alpha',
     technicien_principal: '',
     temps_estime: 8,
     notes_installation: '',
@@ -76,12 +77,16 @@ export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess
         return;
       }
 
-      if (!formData.equipe_assignee) {
-        setError('L\'équipe assignée est obligatoire');
-        return;
-      }
+      // if (!formData.equipe_assignee) {
+      //   setError('L\'équipe assignée est obligatoire');
+      //   return;
+      // }
 
-      // Créer la commande
+      // Créer la commande avec calcul de TVA
+      const totalHT = Number(devis.total_ht) || 0;
+      const totalTTC = Number(devis.total_ttc) || 0;
+      const totalTVA = totalTTC - totalHT; // Calculer la TVA
+
       const commandeData = {
         devis_id: devis.id,
         client_id: devis.client_id,
@@ -91,8 +96,9 @@ export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess
         equipe_assignee: formData.equipe_assignee,
         technicien_principal: formData.technicien_principal || null,
         temps_estime: formData.temps_estime,
-        total_ht: devis.total_ht,
-        total_ttc: devis.total_ttc,
+        total_ht: totalHT,
+        total_tva: totalTVA,  // ← AJOUT IMPORTANT
+        total_ttc: totalTTC,
         notes_installation: formData.notes_installation || null,
         adresse_installation: formData.adresse_installation || null,
         contact_site: formData.contact_site || null,
@@ -181,7 +187,7 @@ export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess
                   {new Intl.NumberFormat('fr-FR', {
                     style: 'currency',
                     currency: 'EUR'
-                  }).format(devis.total_ht)}
+                  }).format(Number(devis.total_ht) || 0)}
                 </p>
               </div>
               <div>
@@ -190,7 +196,7 @@ export default function ConversionDevisModal({ devis, isOpen, onClose, onSuccess
                   {new Intl.NumberFormat('fr-FR', {
                     style: 'currency',
                     currency: 'EUR'
-                  }).format(devis.total_ttc)}
+                  }).format(Number(devis.total_ttc) || 0)}
                 </p>
               </div>
             </div>

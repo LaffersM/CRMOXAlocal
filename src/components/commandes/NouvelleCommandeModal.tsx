@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { 
-  Calendar, 
-  Users, 
-  Clock, 
-  MapPin, 
-  Phone, 
-  FileText, 
-  X, 
+import {
+  Calendar,
+  Users,
+  Clock,
+  MapPin,
+  Phone,
+  FileText,
+  X,
   CheckCircle,
   AlertTriangle,
   Search
@@ -28,17 +28,18 @@ interface NouvelleCommandeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (commandeId: string) => void;
+  existingCommande?: any; // Pour la modification
 }
 
 // ==================== COMPOSANT MODAL ====================
 
-export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess }: NouvelleCommandeModalProps) {
+export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess, existingCommande }: NouvelleCommandeModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  
+
   // État du formulaire
   const [formData, setFormData] = useState({
     client_id: '',
@@ -62,6 +63,36 @@ export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess }: No
       loadClients();
     }
   }, [isOpen]);
+
+  // Ajouter après la déclaration de formData
+  useEffect(() => {
+    if (existingCommande) {
+      // Pré-remplir pour modification
+      setFormData({
+        client_id: existingCommande.client_id,
+        date_installation_prevue: existingCommande.date_installation_prevue || '',
+        equipe_assignee: existingCommande.equipe_assignee || '',
+        technicien_principal: existingCommande.technicien_principal || '',
+        temps_estime: existingCommande.temps_estime || 8,
+        total_ht: existingCommande.total_ht || 0,
+        total_ttc: existingCommande.total_ttc || 0,
+        notes_installation: existingCommande.notes_installation || '',
+        adresse_installation: existingCommande.adresse_installation || '',
+        contact_site: existingCommande.contact_site || '',
+        telephone_contact: existingCommande.telephone_contact || '',
+        instructions_speciales: existingCommande.instructions_speciales || ''
+      });
+
+      // Pré-remplir le client
+      setClientSearch(`${existingCommande.client_entreprise} - ${existingCommande.client_nom}`);
+      setSelectedClient({
+        id: existingCommande.client_id,
+        entreprise: existingCommande.client_entreprise,
+        nom: existingCommande.client_nom,
+        ville: existingCommande.client_ville
+      });
+    }
+  }, [existingCommande]);
 
   const loadClients = async () => {
     try {
@@ -140,59 +171,97 @@ export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess }: No
         return;
       }
 
-      // Créer la commande
-      const commandeData = {
-        client_id: formData.client_id,
-        statut: 'programmee',
-        date_commande: new Date().toISOString().split('T')[0],
-        date_installation_prevue: formData.date_installation_prevue,
-        equipe_assignee: formData.equipe_assignee,
-        technicien_principal: formData.technicien_principal || null,
-        temps_estime: formData.temps_estime,
-        total_ht: formData.total_ht,
-        total_ttc: formData.total_ttc,
-        notes_installation: formData.notes_installation || null,
-        adresse_installation: formData.adresse_installation || null,
-        contact_site: formData.contact_site || null,
-        telephone_contact: formData.telephone_contact || null,
-        instructions_speciales: formData.instructions_speciales || null,
-        photos: [],
-        documents: []
-      };
+      // ... validations existantes ...
 
-      const { data: commande, error: commandeError } = await supabase
-        .from('commandes')
-        .insert([commandeData])
-        .select()
-        .single();
+      if (existingCommande) {
+        // Mode modification
+        const { error } = await supabase
+          .from('commandes')
+          .update({
+            date_installation_prevue: formData.date_installation_prevue,
+            equipe_assignee: formData.equipe_assignee,
+            technicien_principal: formData.technicien_principal || null,
+            temps_estime: formData.temps_estime,
+            notes_installation: formData.notes_installation || null,
+            adresse_installation: formData.adresse_installation || null,
+            contact_site: formData.contact_site || null,
+            telephone_contact: formData.telephone_contact || null,
+            instructions_speciales: formData.instructions_speciales || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingCommande.id);
 
-      if (commandeError) {
-        console.error('Erreur création commande:', commandeError);
-        setError('Erreur lors de la création de la commande: ' + commandeError.message);
-        return;
+        if (error) {
+          console.error('Erreur modification commande:', error);
+          setError('Erreur lors de la modification de la commande: ' + error.message);
+          return;
+        }
+
+        onSuccess(existingCommande.id);
+      } else {
+        // Mode création (code existant)
+        // ... votre code de création existant ...
+
+
+        // Calculer la TVA avant création
+        const totalHT = Number(formData.total_ht) || 0;
+        const totalTTC = Number(formData.total_ttc) || 0;
+        const totalTVA = totalTTC - totalHT;
+
+        const commandeData = {
+          client_id: formData.client_id,
+          statut: 'programmee',
+          date_commande: new Date().toISOString().split('T')[0],
+          date_installation_prevue: formData.date_installation_prevue,
+          equipe_assignee: formData.equipe_assignee,
+          technicien_principal: formData.technicien_principal || null,
+          temps_estime: formData.temps_estime,
+          total_ht: totalHT,
+          total_tva: totalTVA,  // ← AJOUT IMPORTANT
+          total_ttc: totalTTC,
+          notes_installation: formData.notes_installation || null,
+          adresse_installation: formData.adresse_installation || null,
+          contact_site: formData.contact_site || null,
+          telephone_contact: formData.telephone_contact || null,
+          instructions_speciales: formData.instructions_speciales || null,
+          photos: [],
+          documents: []
+        };
+
+        const { data: commande, error: commandeError } = await supabase
+          .from('commandes')
+          .ins// Créer la commandeert([commandeData])
+          .select()
+          .single();
+
+        if (commandeError) {
+          console.error('Erreur création commande:', commandeError);
+          setError('Erreur lors de la création de la commande: ' + commandeError.message);
+          return;
+        }
+
+        // Succès
+        onSuccess(commande.id);
+        onClose();
+
+        // Reset du formulaire
+        setFormData({
+          client_id: '',
+          date_installation_prevue: '',
+          equipe_assignee: '',
+          technicien_principal: '',
+          temps_estime: 8,
+          total_ht: 0,
+          total_ttc: 0,
+          notes_installation: '',
+          adresse_installation: '',
+          contact_site: '',
+          telephone_contact: '',
+          instructions_speciales: ''
+        });
+        setSelectedClient(null);
+        setClientSearch('');
       }
-
-      // Succès
-      onSuccess(commande.id);
-      onClose();
-
-      // Reset du formulaire
-      setFormData({
-        client_id: '',
-        date_installation_prevue: '',
-        equipe_assignee: '',
-        technicien_principal: '',
-        temps_estime: 8,
-        total_ht: 0,
-        total_ttc: 0,
-        notes_installation: '',
-        adresse_installation: '',
-        contact_site: '',
-        telephone_contact: '',
-        instructions_speciales: ''
-      });
-      setSelectedClient(null);
-      setClientSearch('');
 
     } catch (error) {
       console.error('Erreur création:', error);
@@ -220,10 +289,10 @@ export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess }: No
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Nouvelle Commande
+              {existingCommande ? 'Modifier la Commande' : 'Nouvelle Commande'}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Créer une commande manuelle
+              {existingCommande ? `${existingCommande.numero} - ${existingCommande.client_entreprise}` : 'Créer une commande manuelle'}
             </p>
           </div>
           <button
@@ -263,7 +332,7 @@ export default function NouvelleCommandeModal({ isOpen, onClose, onSuccess }: No
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
+
               {clientSearch && !selectedClient && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-auto">
                   {filteredClients.length > 0 ? (

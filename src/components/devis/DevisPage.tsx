@@ -674,15 +674,31 @@ export function DevisPage() {
 
   // Fonctions de conversion
   const handleConvertToCommande = (devis: OXADevis) => {
-    // Préparer les données du devis pour la conversion
+    // Récupérer TOUTES les données du client
+    const client = clients.find(c => c.id === devis.client_id);
+
+    // Nettoyer et convertir les montants en nombres
+    const totalHT = Number(devis.total_ht) || 0;
+    const totalTTC = Number(devis.total_ttc) || 0;
+
+    // Préparer les données COMPLÈTES du devis pour la conversion
     const devisForConversion = {
       id: devis.id,
       numero: devis.numero,
       client_id: devis.client_id,
-      total_ht: devis.total_ht,
-      total_ttc: devis.total_ttc,
-      client: clients.find(c => c.id === devis.client_id)
+      total_ht: totalHT,
+      total_ttc: totalTTC,
+      client: {
+        entreprise: client?.entreprise || 'Entreprise inconnue',
+        nom: client?.nom || 'Contact inconnu',
+        adresse: client?.adresse || '',
+        ville: client?.ville || '',
+        telephone: client?.telephone || ''
+      }
     };
+
+    console.log('Devis original:', devis); // Pour déboguer
+    console.log('Données envoyées à la modal:', devisForConversion); // Pour vérifier
 
     // Fermer la première modal et ouvrir la modal de planification
     setShowConversionModal(false);
@@ -856,7 +872,7 @@ export function DevisPage() {
           setShowConversionModal(false)
           setSelectedDevisForConversion(null)
         }}
-        onConvertToCommande={handleConvertToCommande}
+        onConvertToCommande={() => handleConvertToCommande(selectedDevisForConversion!)}
         onConvertToFacture={handleConvertToFacture}
       />
 
