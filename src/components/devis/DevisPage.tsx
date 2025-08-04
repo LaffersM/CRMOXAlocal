@@ -557,12 +557,41 @@ export function DevisPage() {
           setSelectedDevis(null)
         }}
         onEdit={() => {
-          setEditingDevis(selectedDevis)
-          if (selectedDevis.cee_montant_total > 0) {
-            setShowOXAGenerator(true)
-          } else {
-            setShowStandardGenerator(true)
+          const associatedClient = clients.find(c => c.id === selectedDevis.client_id)
+
+          const enrichedDevis = {
+            ...selectedDevis,
+            client: associatedClient,
+            objet: selectedDevis.objet || '',
+            description_operation: selectedDevis.description_operation || '',
+            remarques: selectedDevis.remarques || '',
+            modalites_paiement: selectedDevis.modalites_paiement || '30% à la commande, 70% à la livraison',
+            garantie: selectedDevis.garantie || '2 ans pièces et main d\'œuvre',
+            penalites: selectedDevis.penalites || 'Pénalités de retard : 0,1% par jour',
+            clause_juridique: selectedDevis.clause_juridique || 'Tribunal de Commerce de Paris',
+            delais: selectedDevis.delais || '4 à 6 semaines après validation du devis',
+            // Données CEE
+            cee_kwh_cumac: selectedDevis.cee_kwh_cumac || 0,
+            cee_prix_unitaire: selectedDevis.cee_prix_unitaire || 0.002,
+            cee_montant_total: selectedDevis.cee_montant_total || 0,
+            reste_a_payer_ht: selectedDevis.reste_a_payer_ht || 0,
+            // Structure de calcul CEE
+            cee_calculation: selectedDevis.cee_calculation || {
+              puissance_nominale: 0,
+              profil_fonctionnement: '1x8h',
+              duree_contrat: 1,
+              coefficient_activite: 1,
+              facteur_f: 1,
+              tarif_kwh: 0.002
+            },
+            cee_integration: selectedDevis.cee_integration || {
+              mode: 'deduction',
+              afficher_bloc: true
+            }
           }
+
+          setEditingDevis(enrichedDevis)
+          setShowOXAGenerator(true)  // Toujours CEE maintenant
           setShowDetails(false)
         }}
       />
