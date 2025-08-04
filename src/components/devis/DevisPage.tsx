@@ -308,6 +308,8 @@ export function DevisPage() {
 
   const handleUpdateDevis = async (id: string, devisData: any) => {
     try {
+      console.log('Données reçues pour mise à jour:', devisData); // Debug
+
       if (!isSupabaseConfigured()) {
         setDevis(devis.map(d =>
           d.id === id ? { ...d, ...devisData, updated_at: new Date().toISOString() } : d
@@ -318,19 +320,65 @@ export function DevisPage() {
         return
       }
 
-      // Transform data for Supabase - map client object to client_id and handle lignes properly
+      // Préparer les données pour Supabase - MÊME LOGIQUE que handleCreateDevis
       const supabaseData = {
-        ...devisData
+        // Champs obligatoires de base
+        date_devis: devisData.date_devis || new Date().toISOString().split('T')[0],
+        objet: devisData.objet,
+        client_id: devisData.client_id,
+        commercial_id: profile?.id,
+
+        // Type et statut
+        type: devisData.type || 'CEE',
+        statut: devisData.statut || 'brouillon',
+
+        // Montants financiers
+        total_ht: devisData.total_ht || 0,
+        total_tva: devisData.total_tva || 0,
+        total_ttc: devisData.total_ttc || 0,
+        tva_taux: devisData.tva_taux || 20.00,
+        marge_totale: devisData.marge_totale || 0,
+
+        // Conditions commerciales
+        modalites_paiement: devisData.modalites_paiement || null,
+        garantie: devisData.garantie || null,
+        penalites: devisData.penalites || null,
+        clause_juridique: devisData.clause_juridique || null,
+        delais: devisData.delais || null,
+
+        // Champs spécifiques CEE (optionnels)
+        ...(devisData.cee_kwh_cumac && {
+          cee_kwh_cumac: devisData.cee_kwh_cumac,
+          cee_prix_unitaire: devisData.cee_prix_unitaire || 0.002,
+          cee_montant_total: devisData.cee_montant_total || devisData.prime_cee || 0,
+          reste_a_payer_ht: devisData.reste_a_payer_ht || devisData.net_a_payer || 0
+        }),
+
+        // Données des lignes
+        lignes_data: devisData.lignes_data || [],
+
+        // Champs texte optionnels
+        description_operation: devisData.description_operation || null,
+        remarques: devisData.remarques || null,
+
+        // Horodatage
+        updated_at: new Date().toISOString()
       }
 
-      // Map client object to client_id if present
-      if (supabaseData.client) {
-        supabaseData.client_id = supabaseData.client.id
-        delete supabaseData.client
-      }
-
-      // Remove lignes field as it doesn't exist in database - only lignes_data exists
+      // Nettoyer les champs qui ne sont pas dans la base de données
+      delete supabaseData.client
       delete supabaseData.lignes
+      delete supabaseData.zones
+      delete supabaseData.cee_params
+      delete supabaseData.cee_result
+      delete supabaseData.cee_mode
+      delete supabaseData.cee_integration
+      delete supabaseData.cee_calculation
+      delete supabaseData.prime_cee_deduite
+      delete supabaseData.net_a_payer
+      delete supabaseData.prime_cee
+
+      console.log('Données à envoyer à Supabase pour mise à jour:', supabaseData); // Debug
 
       const { data, error } = await supabase
         .from('devis')
@@ -339,16 +387,32 @@ export function DevisPage() {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Erreur Supabase détaillée:', error)
+        throw error
+      }
+
+      console.log('Devis mis à jour avec succès:', data); // Debug
+
       setDevis(devis.map(d => d.id === id ? data : d))
       setEditingDevis(null)
       setShowOXAGenerator(false)
       setShowStandardGenerator(false)
-    } catch (error) {
+
+      // Message de succès
+      alert('Devis mis à jour avec succès !')
+
+    } catch (error: any) {
       console.error('Error updating devis:', error)
+
+      // Message d'erreur détaillé
+      if (error?.message) {
+        alert(`Erreur lors de la mise à jour du devis: ${error.message}`)
+      } else {
+        alert('Erreur inconnue lors de la mise à jour du devis')
+      }
     }
   }
-
   const handleDeleteDevis = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce devis ?')) return
 
