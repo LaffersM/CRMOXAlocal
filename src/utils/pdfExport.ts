@@ -28,12 +28,14 @@ export const generateDevisPDF = async (devisData: DevisData, isCEE: boolean = fa
     const pdfElement = document.createElement('div')
     pdfElement.style.position = 'absolute'
     pdfElement.style.left = '-9999px'
-    pdfElement.style.width = '210mm'
+    pdfElement.style.width = '794px' // Largeur A4 en pixels
+    pdfElement.style.minHeight = '1123px' // Hauteur A4 en pixels
     pdfElement.style.backgroundColor = 'white'
-    pdfElement.style.padding = '20mm'
+    pdfElement.style.padding = '40px'
     pdfElement.style.fontFamily = 'Arial, sans-serif'
     pdfElement.style.fontSize = '12px'
     pdfElement.style.lineHeight = '1.4'
+    pdfElement.style.boxSizing = 'border-box'
 
     // Générer le contenu HTML du devis
     pdfElement.innerHTML = generateDevisHTML(devisData, isCEE)
@@ -41,12 +43,24 @@ export const generateDevisPDF = async (devisData: DevisData, isCEE: boolean = fa
     // Ajouter l'élément au DOM temporairement
     document.body.appendChild(pdfElement)
 
+    // Attendre que les images se chargent
+    await new Promise(resolve => setTimeout(resolve, 500))
+
     // Générer le canvas à partir de l'élément HTML
     const canvas = await html2canvas(pdfElement, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 15000,
+      onclone: (clonedDoc) => {
+        // S'assurer que les images sont bien clonées
+        const clonedImages = clonedDoc.querySelectorAll('img')
+        clonedImages.forEach(img => {
+          img.style.display = 'block'
+        })
+      }
     })
 
     // Supprimer l'élément temporaire
@@ -84,8 +98,6 @@ export const generateDevisPDF = async (devisData: DevisData, isCEE: boolean = fa
   }
 }
 
-// Nouvelle fonction generateDevisHTML corrigée pour src/utils/pdfExport.ts
-
 const generateDevisHTML = (devisData: DevisData, isCEE: boolean): string => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -102,246 +114,236 @@ const generateDevisHTML = (devisData: DevisData, isCEE: boolean): string => {
     })
   }
 
-  // Grouper les lignes par zone
-  const groupedLines = devisData.lignes.reduce((acc: any, ligne: any) => {
+  // Grouper les lignes par zone si nécessaire
+  const groupedLines = devisData.lignes.reduce((acc, ligne) => {
     const zone = ligne.zone || 'Général'
     if (!acc[zone]) acc[zone] = []
     acc[zone].push(ligne)
     return acc
-  }, {})
+  }, {} as Record<string, any[]>)
 
   return `
-    <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #333; max-width: 210mm; margin: 0 auto; padding: 10mm;">
-      
-      <!-- En-tête -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #1e40af; padding-bottom: 20px;">
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.4;">
+      <!-- En-tête avec logo et informations -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #0066cc;">
+        <!-- Infos société sans logo -->
         <div style="flex: 1;">
-          <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 15px 20px; border-radius: 12px; display: inline-block; margin-bottom: 15px;">
-            <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">OXA GROUPE</div>
-            <div style="font-size: 12px; opacity: 0.9;">Décarbonation Industrielle</div>
+          <div style="font-size: 24px; font-weight: bold; color: #0066cc; margin-bottom: 10px;">
+            OXA GROUPE
+          </div>
+          <div style="font-size: 10px; color: #666; line-height: 1.5;">
+            contact@oxa-groupe.fr<br>
+            01 23 45 67 89<br>
+            75008 Paris, France
           </div>
         </div>
         
+        <!-- Titre et numéro du devis -->
         <div style="text-align: right; flex: 1;">
-          <div style="font-size: 18px; font-weight: bold; color: #1e40af; margin-bottom: 10px;">
-            ${isCEE ? 'DEVIS CEE' : 'DEVIS'}
+          <div style="background: #0066cc; color: white; padding: 10px 20px; font-size: 24px; font-weight: bold; display: inline-block; margin-bottom: 10px;">
+            ${isCEE ? 'DEVIS' : 'DEVIS'}
           </div>
-          <div style="font-size: 14px; font-weight: bold;">${devisData.numero || 'DEV-2025-XXX-001'}</div>
-          <div style="color: #666; margin-top: 5px;">${formatDate(devisData.date_devis)}</div>
-        </div>
-      </div>
-
-      <!-- Informations client et devis -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-        
-        <!-- Informations du devis -->
-        <div>
-          <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
-            Informations du devis
-          </h3>
-          <div style="font-size: 11px; line-height: 1.6;">
-            <div style="margin-bottom: 8px;"><strong>N° de devis:</strong> ${devisData.numero || 'DEV-2025-XXX-001'}</div>
-            <div style="margin-bottom: 8px;"><strong>Date:</strong> ${formatDate(devisData.date_devis)}</div>
-            <div style="margin-bottom: 8px;"><strong>Objet:</strong> ${devisData.objet}</div>
-            ${devisData.delais ? `<div style="margin-bottom: 8px;"><strong>Délais:</strong> ${devisData.delais}</div>` : ''}
+          <div style="font-size: 14px; color: #0066cc; font-weight: bold; margin: 5px 0;">
+            ${devisData.numero}
           </div>
-        </div>
-
-        <!-- Informations client -->
-        <div>
-          <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
-            Client
-          </h3>
-          <div style="font-size: 11px; line-height: 1.6;">
-            <div style="font-weight: bold; margin-bottom: 5px;">${devisData.client?.entreprise || 'Entreprise'}</div>
-            <div style="margin-bottom: 5px;">${devisData.client?.nom || 'Contact'}</div>
-            ${devisData.client?.adresse ? `<div style="margin-bottom: 3px;">${devisData.client.adresse}</div>` : ''}
-            ${devisData.client?.code_postal && devisData.client?.ville ?
-      `<div style="margin-bottom: 3px;">${devisData.client.code_postal} ${devisData.client.ville}</div>` : ''}
-            ${devisData.client?.telephone ? `<div style="margin-bottom: 3px;">Tél: ${devisData.client.telephone}</div>` : ''}
-            ${devisData.client?.email ? `<div style="margin-bottom: 3px;">Email: ${devisData.client.email}</div>` : ''}
-            ${devisData.client?.siret ? `<div style="margin-bottom: 3px;">SIRET: ${devisData.client.siret}</div>` : ''}
+          <div style="font-size: 12px; color: #666;">
+            ${formatDate(devisData.date_devis)}
           </div>
         </div>
       </div>
 
+      <!-- Informations client -->
+      <div style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-left: 4px solid #0066cc;">
+        <div style="font-weight: bold; color: #0066cc; margin-bottom: 10px;">Client</div>
+        <div style="margin-bottom: 5px;">
+          <strong>${devisData.client?.entreprise || 'Nom de l\'entreprise'}</strong>
+        </div>
+        <div style="font-size: 11px; color: #666;">
+          ${devisData.client?.nom || 'Nom du contact'}<br>
+          ${devisData.client?.email || 'email@client.fr'}<br>
+          ${devisData.client?.telephone || '01 23 45 67 89'}<br>
+          ${devisData.client?.adresse || ''} ${devisData.client?.code_postal || ''} ${devisData.client?.ville || ''}
+        </div>
+      </div>
+
+      <!-- Objet du devis -->
+      ${devisData.objet ? `
+        <div style="margin: 20px 0;">
+          <h3 style="color: #0066cc; font-size: 14px; margin-bottom: 5px;">Objet</h3>
+          <p style="margin: 0; font-size: 12px;">${devisData.objet}</p>
+        </div>
+      ` : ''}
+
+      <!-- Description de l'opération -->
       ${devisData.description_operation ? `
-        <!-- Description de l'opération -->
-        <div style="margin-bottom: 25px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
-          <h3 style="font-size: 13px; font-weight: bold; color: #374151; margin: 0 0 10px 0;">
-            Description de l'opération
-          </h3>
-          <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #4b5563;">
-            ${devisData.description_operation}
-          </p>
+        <div style="margin: 20px 0;">
+          <h3 style="color: #0066cc; font-size: 14px; margin-bottom: 5px;">Description de l'opération</h3>
+          <p style="margin: 0; font-size: 12px; color: #666;">${devisData.description_operation}</p>
         </div>
       ` : ''}
 
-      ${isCEE && (devisData.cee_kwh_cumac || 0) > 0 ? `
-        <!-- Calcul CEE -->
-        <div style="margin-bottom: 25px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px; padding: 20px;">
-          <h3 style="font-size: 14px; font-weight: bold; color: #92400e; margin: 0 0 15px 0; display: flex; align-items: center;">
-            ⚡ Calcul CEE IND-UT-134
-          </h3>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; font-size: 11px;">
-            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
-              <div style="color: #92400e; font-weight: bold; margin-bottom: 5px;">kWh cumac</div>
-              <div style="font-size: 16px; font-weight: bold; color: #1f2937;">
-                ${(devisData.cee_kwh_cumac || 0).toLocaleString('fr-FR')}
-              </div>
+      <!-- Tableau des prestations avec protection contre la coupure de page -->
+      <div style="page-break-inside: avoid;">
+        <h3 style="color: #0066cc; font-size: 16px; margin: 20px 0 10px 0;">Détail des prestations</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="page-break-inside: avoid; page-break-after: avoid;">
+              <th style="background: #0066cc; color: white; padding: 10px; text-align: left; font-size: 12px; width: 50%;">Désignation</th>
+              <th style="background: #0066cc; color: white; padding: 10px; text-align: center; font-size: 12px; width: 10%;">Qté</th>
+              <th style="background: #0066cc; color: white; padding: 10px; text-align: right; font-size: 12px; width: 15%;">Prix unit. HT</th>
+              <th style="background: #0066cc; color: white; padding: 10px; text-align: right; font-size: 12px; width: 25%;">Total HT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(groupedLines).map(([zone, lignes]) => {
+              // Regrouper les lignes par blocs pour éviter les coupures
+              const lignesHTML = lignes.map((ligne, index) => `
+                <tr style="border-bottom: 1px solid #e0e0e0; page-break-inside: avoid;">
+                  <td style="padding: 8px 10px; font-size: 11px; page-break-inside: avoid;">
+                    <strong>${ligne.designation || ligne.nom || 'Article'}</strong>
+                    ${ligne.description ? `<br><span style="color: #666; font-size: 10px;">${ligne.description}</span>` : ''}
+                    ${ligne.remarques ? `<br><small style="color: #999; font-style: italic; font-size: 9px;">${ligne.remarques}</small>` : ''}
+                  </td>
+                  <td style="padding: 8px 10px; text-align: center; font-size: 11px; page-break-inside: avoid;">${ligne.quantite || 1}</td>
+                  <td style="padding: 8px 10px; text-align: right; font-size: 11px; page-break-inside: avoid;">${formatCurrency(ligne.prix_unitaire || 0)}</td>
+                  <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px; page-break-inside: avoid;">${formatCurrency(ligne.prix_total || (ligne.prix_unitaire * ligne.quantite) || 0)}</td>
+                </tr>
+              `).join('');
+              
+              if (zone !== 'Général') {
+                return `
+                  <tbody style="page-break-inside: avoid;">
+                    <tr style="page-break-inside: avoid;">
+                      <td colspan="4" style="background: #f0f4f8; padding: 8px; font-weight: bold; color: #0066cc; font-size: 12px;">
+                        ${zone}
+                      </td>
+                    </tr>
+                    ${lignesHTML}
+                  </tbody>
+                `;
+              }
+              return lignesHTML;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section totaux avec CEE si applicable - Éviter la coupure -->
+      <div style="display: flex; justify-content: space-between; margin-top: 30px; gap: 20px; page-break-inside: avoid;">
+        
+        <!-- Section CEE (si applicable) -->
+        ${isCEE && devisData.cee_kwh_cumac ? `
+          <div style="flex: 1; background: #fff9e6; border: 2px solid #ffb300; border-radius: 8px; padding: 15px;">
+            <div style="color: #ff8800; font-weight: bold; font-size: 14px; margin-bottom: 10px; text-align: center;">
+              Certificats d'Économies d'Énergie
             </div>
-            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
-              <div style="color: #92400e; font-weight: bold; margin-bottom: 5px;">Prix unitaire</div>
-              <div style="font-size: 14px; font-weight: bold; color: #1f2937;">
-                ${(devisData.cee_prix_unitaire || 0).toFixed(4)} €/kWh
+            <div style="font-size: 11px;">
+              <div style="display: flex; justify-content: space-between; margin: 5px 0; padding: 3px 0;">
+                <span style="color: #666;">kWh cumac générés :</span>
+                <span style="font-weight: bold; color: #ff8800;">${(devisData.cee_kwh_cumac || 0).toLocaleString('fr-FR')}</span>
               </div>
-            </div>
-            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
-              <div style="color: #92400e; font-weight: bold; margin-bottom: 5px;">Prime CEE</div>
-              <div style="font-size: 16px; font-weight: bold; color: #059669;">
-                ${formatCurrency(devisData.cee_montant_total || 0)}
+              <div style="display: flex; justify-content: space-between; margin: 5px 0; padding: 3px 0;">
+                <span style="color: #666;">Prix unitaire :</span>
+                <span style="font-weight: bold; color: #ff8800;">${(devisData.cee_prix_unitaire || 0).toFixed(3)} €/kWh</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin: 5px 0; padding: 3px 0; border-top: 1px solid #ffb300; padding-top: 10px;">
+                <span style="color: #666;"><strong>Prime CEE estimée :</strong></span>
+                <span style="font-weight: bold; color: #ff8800; font-size: 14px;">${formatCurrency(devisData.cee_montant_total || 0)}</span>
               </div>
             </div>
           </div>
-        </div>
-      ` : ''}
-
-      <!-- Détail des prestations -->
-      <div style="margin-bottom: 25px;">
-        <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
-          Détail des prestations
-        </h3>
+        ` : '<div style="flex: 1;"></div>'}
         
-        ${Object.entries(groupedLines).map(([zone, lignes]: [string, any]) => `
-          ${zone !== 'Général' ? `
-            <div style="background-color: #1e40af; color: white; padding: 8px 12px; font-weight: bold; font-size: 12px; margin: 15px 0 5px 0; border-radius: 4px;">
-              ${zone}
+        <!-- Section Sous-totaux -->
+        <div style="flex: 0 0 300px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+          <div style="font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+              <span>Sous-total HT :</span>
+              <span>${formatCurrency(devisData.total_ht)}</span>
             </div>
-          ` : ''}
-          
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10px;">
-            <thead>
-              <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                <th style="text-align: left; padding: 8px 6px; border: 1px solid #e2e8f0; font-weight: bold; width: 45%;">Désignation</th>
-                <th style="text-align: center; padding: 8px 6px; border: 1px solid #e2e8f0; font-weight: bold; width: 8%;">Qté</th>
-                <th style="text-align: right; padding: 8px 6px; border: 1px solid #e2e8f0; font-weight: bold; width: 15%;">Prix unit. HT</th>
-                <th style="text-align: right; padding: 8px 6px; border: 1px solid #e2e8f0; font-weight: bold; width: 15%;">Total HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lignes.map((ligne: any, index: number) => `
-                <tr style="border-bottom: 1px solid #f1f5f9; ${index % 2 === 0 ? 'background-color: #fafbfc;' : ''}">
-                  <td style="padding: 8px 6px; border: 1px solid #e2e8f0; vertical-align: top;">
-                    <div style="font-weight: 500; margin-bottom: 2px;">${ligne.designation || ligne.description}</div>
-                    ${ligne.remarques ? `<div style="font-size: 9px; color: #6b7280; font-style: italic;">${ligne.remarques}</div>` : ''}
-                  </td>
-                  <td style="padding: 8px 6px; border: 1px solid #e2e8f0; text-align: center;">
-                    ${ligne.quantite}
-                  </td>
-                  <td style="padding: 8px 6px; border: 1px solid #e2e8f0; text-align: right;">
-                    ${formatCurrency(ligne.prix_unitaire)}
-                  </td>
-                  <td style="padding: 8px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: 500;">
-                    ${formatCurrency(ligne.prix_total || ligne.total_ht || (ligne.quantite * ligne.prix_unitaire))}
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `).join('')}
-      </div>
-
-      <!-- Récapitulatif financier -->
-      <div style="margin-bottom: 25px;">
-        <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
-          Récapitulatif
-        </h3>
-        
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-          <div></div>
-          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
-            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px;">
-              <span>Total HT:</span>
-              <span style="font-weight: 600;">${formatCurrency(devisData.total_ht)}</span>
+            <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+              <span>TVA (${devisData.lignes[0]?.tva || 20}%) :</span>
+              <span>${formatCurrency(devisData.total_tva)}</span>
             </div>
-            
-            ${isCEE && (devisData.cee_montant_total || 0) > 0 ? `
-              <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #059669; font-size: 11px;">
-                <span>Prime CEE:</span>
-                <span style="font-weight: 600;">- ${formatCurrency(devisData.cee_montant_total)}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid #d1d5db; font-size: 11px;">
-                <span>Reste à payer HT:</span>
-                <span style="font-weight: 600;">${formatCurrency(devisData.reste_a_payer_ht || 0)}</span>
-              </div>
-            ` : ''}
-            
-            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px;">
-              <span>TVA (20%):</span>
-              <span style="font-weight: 600;">${formatCurrency(devisData.total_tva)}</span>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #374151; font-size: 13px; font-weight: bold;">
-              <span>TOTAL TTC:</span>
+            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 16px; font-weight: bold; color: #0066cc; border-top: 2px solid #0066cc; margin-top: 10px; padding-top: 10px;">
+              <span>TOTAL TTC :</span>
               <span>${formatCurrency(devisData.total_ttc)}</span>
             </div>
+            ${isCEE && devisData.cee_montant_total ? `
+              <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #28a745;">
+                <span>Prime CEE déduite :</span>
+                <span>-${formatCurrency(devisData.cee_montant_total)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; font-weight: bold; color: #28a745;">
+                <span>Reste à payer :</span>
+                <span>${formatCurrency((devisData.total_ttc || 0) - (devisData.cee_montant_total || 0))}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
 
-      <!-- Conditions -->
-      <div style="margin-bottom: 30px;">
-        <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
-          Conditions
-        </h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 10px; line-height: 1.5;">
+      <!-- Conditions - Éviter la coupure -->
+      <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 11px; page-break-inside: avoid;">
+        <h3 style="color: #0066cc; font-size: 14px; margin-bottom: 10px;">Conditions</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div>
-            <p style="margin: 0 0 10px 0; font-weight: bold;">Modalités de paiement:</p>
-            <p style="margin: 0 0 15px 0; color: #4b5563;">${devisData.modalites_paiement}</p>
-            
-            <p style="margin: 0 0 10px 0; font-weight: bold;">Garantie:</p>
-            <p style="margin: 0; color: #4b5563;">${devisData.garantie}</p>
+            <strong>Modalités de paiement :</strong><br>
+            ${devisData.modalites_paiement || '30% à la commande, 70% à la livraison'}
           </div>
           <div>
-            <p style="margin: 0 0 10px 0; font-weight: bold;">Pénalités:</p>
-            <p style="margin: 0 0 15px 0; color: #4b5563;">${devisData.penalites}</p>
-            
-            <p style="margin: 0 0 10px 0; font-weight: bold;">Clause juridique:</p>
-            <p style="margin: 0; color: #4b5563;">${devisData.clause_juridique}</p>
+            <strong>Délai de livraison :</strong><br>
+            ${devisData.delais || '4 à 6 semaines'}
           </div>
         </div>
+        <div style="margin-top: 10px;">
+          <strong>Garantie :</strong><br>
+          ${devisData.garantie || '2 ans pièces et main d\'œuvre'}
+        </div>
+        ${devisData.penalites ? `
+          <div style="margin-top: 10px;">
+            <strong>Pénalités :</strong><br>
+            ${devisData.penalites}
+          </div>
+        ` : ''}
+        ${devisData.clause_juridique ? `
+          <div style="margin-top: 10px;">
+            <strong>Clause juridique :</strong><br>
+            ${devisData.clause_juridique}
+          </div>
+        ` : ''}
       </div>
 
-      <!-- Signature -->
-      <div style="margin-top: 40px; border: 2px solid #dbeafe; border-radius: 8px; padding: 20px; background-color: #eff6ff;">
-        <h3 style="font-size: 14px; font-weight: bold; color: #1e40af; text-align: center; margin: 0 0 20px 0;">
+      <!-- Section signature - Éviter la coupure -->
+      <div style="margin-top: 40px; padding: 20px; border: 2px solid #0066cc; border-radius: 8px; page-break-inside: avoid;">
+        <div style="text-align: center; color: #0066cc; font-weight: bold; margin-bottom: 20px;">
           Validation client
-        </h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center; font-size: 10px;">
-          <div>
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">Nom / Fonction</p>
-            <div style="height: 40px; border-bottom: 2px solid #93c5fd;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-around; gap: 30px;">
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 11px; color: #666; margin-bottom: 5px;">Nom / Fonction</div>
+            <div style="border-bottom: 1px solid #999; height: 50px;"></div>
           </div>
-          <div>
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">Signature</p>
-            <div style="height: 40px; border-bottom: 2px solid #93c5fd;"></div>
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 11px; color: #666; margin-bottom: 5px;">Signature</div>
+            <div style="border-bottom: 1px solid #999; height: 50px;"></div>
           </div>
-          <div>
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">Date</p>
-            <div style="height: 40px; border-bottom: 2px solid #93c5fd;"></div>
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 11px; color: #666; margin-bottom: 5px;">Date</div>
+            <div style="border-bottom: 1px solid #999; height: 50px;"></div>
           </div>
         </div>
-        <p style="text-align: center; font-size: 11px; color: #1e40af; margin: 15px 0 0 0; font-weight: bold;">
+        <div style="text-align: center; margin-top: 20px; color: #0066cc; font-size: 12px; font-weight: bold;">
           Mention manuscrite obligatoire : "Bon pour accord"
-        </p>
+        </div>
       </div>
 
-      <!-- Footer -->
-      <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+      <!-- Pied de page -->
+      <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #666; padding-top: 20px; border-top: 1px solid #e0e0e0;">
         <p style="margin: 0;">OXA GROUPE - Décarbonation Industrielle</p>
         <p style="margin: 5px 0 0 0;">Ce devis est valable 30 jours à compter de sa date d'émission</p>
       </div>
-
     </div>
-  `;
+  `
 }
