@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { 
-  Home, 
-  Users, 
-  UserPlus, 
-  FileText, 
-  ShoppingCart, 
-  CreditCard, 
-  Package, 
+import {
+  Home,
+  Users,
+  UserPlus,
+  FileText,
+  ShoppingCart,
+  CreditCard,
+  Package,
   Calculator,
   Settings,
   LogOut,
@@ -38,14 +38,25 @@ export function Navigation() {
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo et titre */}
+          {/* Logo seul - sans texte */}
           <div className="flex items-center flex-shrink-0">
             <div className="flex-shrink-0 flex items-center">
-              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">OXA</span>
+              <div className="h-20 w-20 flex items-center justify-center">
+                <img 
+                  src="/logo-couleur.svg" 
+                  alt="OXA Groupe" 
+                  className="h-20 w-20 object-contain"
+                  onError={(e) => {
+                    // Si le logo ne se charge pas, afficher un fallback
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+                {/* Fallback au cas où l'image ne charge pas */}
+                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg items-center justify-center hidden">
+                  <span className="text-white font-bold text-sm">OXA</span>
+                </div>
               </div>
-              <span className="ml-2 text-lg font-bold text-gray-900 hidden sm:block">OXA Groupe CRM</span>
-              <span className="ml-2 text-lg font-bold text-gray-900 sm:hidden">OXA</span>
             </div>
           </div>
 

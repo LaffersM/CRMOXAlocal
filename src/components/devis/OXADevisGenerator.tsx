@@ -376,9 +376,9 @@ const DEFAULT_DEVIS_DATA: DevisData = {
   cee_params: {
     puissance_nominale: 0,
     profil_fonctionnement: '3x8h_no_stop',  // ← Le plus performant
-    duree_contrat: 5,                       // ← 5 ans
+    duree_contrat: 6,                       // ← 6 ans
     coefficient_activite: 4.2,              // ← Sera recalculé automatiquement
-    facteur_f: 4.63,                       // ← Sera recalculé automatiquement  
+    facteur_f: 5.45,                       // ← Sera recalculé automatiquement  
     tarif_kwh: 0.007                       // ← 0,007 €
   },
   cee_result: {

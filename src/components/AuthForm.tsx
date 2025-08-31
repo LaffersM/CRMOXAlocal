@@ -96,15 +96,27 @@ export function AuthForm() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center">
-            <img src="/logo-couleur.svg" alt="OXA Groupe" className="h-16 w-16" />
+          <div className="mx-auto w-48 h-48 flex items-center justify-center">
+            <img
+              src="/logo-couleur.svg"
+              alt="OXA Groupe"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Si le logo ne se charge pas, afficher un fallback
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling.style.display = 'flex';
+              }}
+            />
+            {/* Fallback au cas où l'image ne charge pas */}
+            <div
+              className="w-24 h-24 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl items-center justify-center hidden"
+            >
+              <span className="text-white font-bold text-3xl">OXA</span>
+            </div>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             {isLogin ? 'Connexion' : 'Inscription'}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            OXA Groupe CRM - Décarbonation Industrielle
-          </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

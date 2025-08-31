@@ -542,7 +542,7 @@ export function CommandesPage() {
         isOpen={showNouvelleCommandeModal}
         onClose={() => {
           setShowNouvelleCommandeModal(false);
-          setEditingCommande(null); // Remettre à null à la fermeture
+          setEditingCommande(null); // Remettre à null à la fermetureuyhhgyuih
         }}
         onSuccess={(commandeId) => {
           console.log('Commande créée/modifiée:', commandeId);
