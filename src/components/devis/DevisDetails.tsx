@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
 import { OXADevis, Client } from '../../lib/supabase'
-import { 
-  X, 
-  Edit, 
-  FileText, 
-  User, 
-  Calendar, 
-  Euro, 
-  Download, 
-  Send, 
+import {
+  X,
+  Edit,
+  FileText,
+  User,
+  Calendar,
+  Euro,
+  Download,
+  Send,
   Printer,
   Eye,
   Building,
@@ -118,7 +118,7 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-        
+
         {/* Header avec actions */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center">
@@ -156,7 +156,7 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
                 </>
               )}
             </button>
-            
+
             <button
               onClick={handlePrint}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
@@ -185,10 +185,10 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
         {/* Contenu scrollable */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-8" id="devis-content">
-            
+
             {/* Informations du devis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
+
               {/* Informations générales */}
               <div className="bg-gray-50 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -206,13 +206,12 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Type:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      devis.type === 'IPE' ? 'bg-blue-100 text-blue-800' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${devis.type === 'IPE' ? 'bg-blue-100 text-blue-800' :
                       devis.type === 'ELEC' ? 'bg-yellow-100 text-yellow-800' :
-                      devis.type === 'MATERIEL' ? 'bg-green-100 text-green-800' :
-                      devis.type === 'MAIN_OEUVRE' ? 'bg-purple-100 text-purple-800' :
-                      'bg-orange-100 text-orange-800'
-                    }`}>
+                        devis.type === 'MATERIEL' ? 'bg-green-100 text-green-800' :
+                          devis.type === 'MAIN_OEUVRE' ? 'bg-purple-100 text-purple-800' :
+                            'bg-orange-100 text-orange-800'
+                      }`}>
                       {devis.type}
                     </span>
                   </div>
@@ -286,7 +285,7 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
                   <div className="bg-white rounded-lg p-4 border border-yellow-200">
                     <p className="text-sm text-gray-600">Prix unitaire</p>
                     <p className="text-xl font-bold text-gray-900">
-                      {formatCurrency(devis.cee_prix_unitaire || 0)}
+                      {devis.cee_prix_unitaire ? devis.cee_prix_unitaire.toFixed(4) : '0.0000'} €/kWh
                     </p>
                   </div>
                   <div className="bg-white rounded-lg p-4 border border-yellow-200">
@@ -302,7 +301,7 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
             {/* Lignes du devis */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Lignes du devis</h3>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -351,32 +350,32 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
                 <Euro className="h-5 w-5 text-green-600" />
                 Récapitulatif financier
               </h3>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600">Total HT:</span>
                   <span className="font-medium">{formatCurrency(devis.total_ht)}</span>
                 </div>
-                
+
                 {(devis.cee_montant_total || 0) > 0 && (
                   <div className="flex justify-between py-2 text-green-700">
                     <span>Prime CEE:</span>
                     <span className="font-medium">- {formatCurrency(devis.cee_montant_total)}</span>
                   </div>
                 )}
-                
+
                 {(devis.reste_a_payer_ht || 0) > 0 && (
                   <div className="flex justify-between py-2 border-t border-gray-200">
                     <span className="text-gray-600">Reste à payer HT:</span>
                     <span className="font-medium">{formatCurrency(devis.reste_a_payer_ht)}</span>
                   </div>
                 )}
-                
+
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600">TVA ({devis.tva_taux || 20}%):</span>
                   <span className="font-medium">{formatCurrency(devis.total_tva)}</span>
                 </div>
-                
+
                 <div className="flex justify-between py-3 border-t-2 border-gray-300 text-lg font-bold">
                   <span>TOTAL TTC:</span>
                   <span className="text-blue-600">{formatCurrency(devis.total_ttc)}</span>
@@ -386,7 +385,7 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
 
             {/* Conditions et remarques */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
               {/* Conditions */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Conditions</h3>

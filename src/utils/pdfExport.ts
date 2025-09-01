@@ -201,7 +201,6 @@ const generateDevisHTML = (devisData: DevisData, isCEE: boolean): string => {
               const lignesHTML = lignes.map((ligne, index) => `
                 <tr style="border-bottom: 1px solid #e0e0e0; page-break-inside: avoid;">
                   <td style="padding: 8px 10px; font-size: 11px; page-break-inside: avoid;">
-                    <strong>${ligne.designation || ligne.nom || 'Article'}</strong>
                     ${ligne.description ? `<br><span style="color: #666; font-size: 10px;">${ligne.description}</span>` : ''}
                     ${ligne.remarques ? `<br><small style="color: #999; font-style: italic; font-size: 9px;">${ligne.remarques}</small>` : ''}
                   </td>

@@ -695,6 +695,12 @@ export default function OptimizedCEEGenerator({
       return;
     }
 
+    console.log('Valeurs CEE avant sauvegarde:', {
+      tarif_kwh: devisData.cee_params.tarif_kwh,
+      kwh_cumac: devisData.cee_result.kwh_cumac,
+      prime_estimee: devisData.cee_result.prime_estimee
+    });
+
     // Préparer les données pour la base de données
     const finalData = {
       // Informations de base
