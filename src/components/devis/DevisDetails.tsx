@@ -1,25 +1,8 @@
 import React, { useState } from 'react'
 import { OXADevis, Client } from '../../lib/supabase'
-import {
-  X,
-  Edit,
-  FileText,
-  User,
-  Calendar,
-  Euro,
-  Download,
-  Send,
-  Printer,
-  Eye,
-  Building,
-  Phone,
-  Mail,
-  MapPin,
-  Clock,
-  Zap,
-  AlertCircle
-} from 'lucide-react'
+import { X, Edit, FileText, User, Calendar, Euro, Download, Send, History, Zap, Building, Printer, Mail, Phone, MapPin, Clock } from 'lucide-react'
 import { generateDevisPDF } from '../../utils/pdfExport'
+import { DevisHistory } from './DevisHistory';
 
 interface DevisDetailsProps {
   devis: OXADevis;
@@ -29,6 +12,7 @@ interface DevisDetailsProps {
 }
 
 export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsProps) {
+  const [showHistory, setShowHistory] = useState(false);
   const [isExporting, setIsExporting] = useState(false)
   const [showPrintPreview, setShowPrintPreview] = useState(false)
 
@@ -139,6 +123,14 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <History className="h-4 w-4 mr-2" />
+              Historique
+            </button>
+
             <button
               onClick={handleExportPDF}
               disabled={isExporting}
@@ -436,6 +428,12 @@ export function DevisDetails({ devis, client, onClose, onEdit }: DevisDetailsPro
           </div>
         </div>
       </div>
+      {/* Fenêtre d'historique */}
+      <DevisHistory
+        devisId={devis.id}
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
     </div>
   )
 }

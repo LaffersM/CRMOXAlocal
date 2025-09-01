@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Save, X, Plus, Trash2, Calculator, Eye, EyeOff, Search, ChevronDown, ChevronUp, User, Package } from 'lucide-react';
+import { useDevisHistory } from '../../hooks/useDevisHistory';
+import { useAuth } from '../../hooks/useAuth';
 
 // ====== COMPOSANTS SEMI-AUTOMATIQUES ======
 
@@ -12,6 +14,7 @@ interface ClientSelectorProps {
 }
 
 function ClientSelector({ clients, selectedClient, onClientSelect, error }: ClientSelectorProps) {
+  const { profile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -269,6 +272,7 @@ function ArticleSelector({ articles, onArticleSelect, currentDesignation, disabl
     </div>
   );
 }
+
 interface Client {
   id: string;
   nom: string;
@@ -413,6 +417,10 @@ export default function OptimizedCEEGenerator({
   onCancel,
   existingDevis
 }: Props) {
+  // ====== HOOKS ======
+  const { user } = useAuth();
+  const { logDevisCreation, logDevisModification, logLigneAjoutee, logLigneSupprimee } = useDevisHistory();
+
   // ====== ÉTATS ======
   const [devisData, setDevisData] = useState<DevisData>(DEFAULT_DEVIS_DATA);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -428,6 +436,12 @@ export default function OptimizedCEEGenerator({
   }, []);
 
   const generateId = useCallback(() => Date.now().toString(), []);
+
+  // Helper pour obtenir le nom d'utilisateur avec @
+  const getUserName = useCallback(() => {
+    if (!user) return '@utilisateur_inconnu';
+    return `@${user.prenom}_${user.nom}`.toLowerCase().replace(/\s+/g, '_');
+  }, [user]);
 
   // ====== CALCULS CEE ======
   const calculateCEE = useCallback((params: CEEParams): CEEResult => {
@@ -535,8 +549,8 @@ export default function OptimizedCEEGenerator({
     updateDevisData({ zones: newZones });
   }, [devisData.zones, updateDevisData]);
 
-  // ====== GESTION DES LIGNES ======
-  const addLineToZone = useCallback((zoneId: string) => {
+  // ====== GESTION DES LIGNES AVEC HISTORIQUE ======
+  const addLineToZone = useCallback(async (zoneId: string) => {
     const newLine: DevisLine = {
       id: generateId(),
       designation: '',
@@ -553,8 +567,16 @@ export default function OptimizedCEEGenerator({
       updateZone(zoneId, {
         lignes: [...zone.lignes, newLine]
       });
+
+      // Logger l'ajout de ligne
+      if (existingDevis?.id) {
+        await logLigneAjoutee(
+          existingDevis.id,
+          `Nouvelle ligne ajoutée dans la zone "${zone.nom}" par ${getUserName()}`
+        );
+      }
     }
-  }, [devisData.zones, generateId, updateZone]);
+  }, [devisData.zones, generateId, updateZone, existingDevis?.id, logLigneAjoutee, getUserName]);
 
   const updateLine = useCallback((zoneId: string, lineId: string, field: keyof DevisLine, value: any) => {
     console.log('Mise à jour ligne:', { zoneId, lineId, field, value }); // Debug
@@ -588,13 +610,23 @@ export default function OptimizedCEEGenerator({
     updateZone(zoneId, { lignes: newLignes });
   }, [devisData.zones, updateZone]);
 
-  const removeLine = useCallback((zoneId: string, lineId: string) => {
+  const removeLine = useCallback(async (zoneId: string, lineId: string) => {
     const zone = devisData.zones.find(z => z.id === zoneId);
     if (!zone) return;
 
+    const ligne = zone.lignes.find(l => l.id === lineId);
     const newLignes = zone.lignes.filter(ligne => ligne.id !== lineId);
+    
     updateZone(zoneId, { lignes: newLignes });
-  }, [devisData.zones, updateZone]);
+
+    // Logger la suppression de ligne
+    if (existingDevis?.id && ligne) {
+      await logLigneSupprimee(
+        existingDevis.id,
+        `Ligne "${ligne.designation || 'Sans titre'}" (${ligne.quantite}x${formatCurrency(ligne.prix_unitaire)}) supprimée de la zone "${zone.nom}" par ${getUserName()}`
+      );
+    }
+  }, [devisData.zones, updateZone, existingDevis?.id, logLigneSupprimee, formatCurrency, getUserName]);
 
   // Fonction spécifique pour la sélection d'article
   const handleArticleSelection = useCallback((zoneId: string, lineId: string, article: Article) => {
@@ -689,8 +721,8 @@ export default function OptimizedCEEGenerator({
     return Object.keys(newErrors).length === 0;
   }, [selectedClient, devisData]);
 
-  // ====== SAUVEGARDE ======
-  const handleSave = useCallback(() => {
+  // ====== SAUVEGARDE AVEC HISTORIQUE ======
+  const handleSave = useCallback(async () => {
     if (!validateForm()) {
       return;
     }
@@ -773,12 +805,42 @@ export default function OptimizedCEEGenerator({
 
     console.log('Données à sauvegarder:', finalData); // Debug
 
-    onSave(finalData);
-  }, [validateForm, devisData, selectedClient, onSave]);
+    try {
+      // Sauvegarder le devis
+      const savedDevis = await onSave(finalData);
+      
+      // Logger l'historique selon le contexte
+      if (existingDevis) {
+        // Modification d'un devis existant
+        await logDevisModification(
+          existingDevis.id,
+          `Devis CEE modifié par ${getUserName()}: ${devisData.objet} (${formatCurrency(devisData.total_ttc)} TTC)`
+        );
+      } else {
+        // Création d'un nouveau devis
+        const devisId = savedDevis?.id || finalData.client_id; // Fallback si pas d'ID retourné
+        await logDevisCreation(
+          devisId,
+          `Devis CEE créé par ${getUserName()} pour ${selectedClient?.entreprise} - ${devisData.objet} (${formatCurrency(devisData.total_ttc)} TTC)`
+        );
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde ou du logging:', error);
+      // La sauvegarde continue même si le logging échoue
+    }
+  }, [
+    validateForm, 
+    devisData, 
+    selectedClient, 
+    onSave, 
+    existingDevis, 
+    logDevisCreation, 
+    logDevisModification, 
+    getUserName, 
+    formatCurrency
+  ]);
 
   // ====== INITIALISATION ======
-  // Remplacer le useEffect d'initialisation dans OXADevisGenerator.tsx
-
   useEffect(() => {
     if (existingDevis) {
       console.log('Initialisation avec:', existingDevis); // Debug
@@ -1428,7 +1490,6 @@ export default function OptimizedCEEGenerator({
           </div>
         )}
       </div>
-
     </div>
   );
 }
